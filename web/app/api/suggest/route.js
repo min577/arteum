@@ -26,7 +26,10 @@ export async function POST(req) {
 
   let body;
   try { body = await req.json(); } catch { return Response.json({ error: "bad request" }, { status: 400 }); }
-  const { sido = "", sigungu = "", target = "", nearby = [], demand = 0, far = false, need = 0 } = body;
+  const { sido = "", sigungu = "", target = "", nearby = [], demand = 0, far = false, need = 0, cur = 0 } = body;
+  const gapText = cur === 0
+    ? `'${target}' 대상 문화예술교육 프로그램이 0건인 사각지대`
+    : `'${target}' 대상 프로그램이 ${cur}건뿐이라 전국 평균 대비 약 ${need}건 부족한 지역`;
 
   const nearbyText = (nearby || []).slice(0, 3)
     .map((n) => `- ${n.org} (${n.sigungu}, ${n.field || ""})`).join("\n") || "(인근 공급 정보 없음)";
@@ -35,7 +38,7 @@ export async function POST(req) {
     : `인근 현재·예정 문화행사 ${demand}건 → 지역에 문화 향유 수요가 ${demand >= 8 ? "활발" : demand >= 3 ? "있음" : "다소 있음"}.`;
 
   const prompt = `당신은 한국문화예술교육진흥원(ARTE)의 문화예술교육 기획 전문가입니다.
-아래 지역은 ARTE 개방데이터 분석 결과 '${target}' 대상 문화예술교육 프로그램이 0건인 사각지대입니다.
+아래 지역은 ARTE 개방데이터 분석 결과 ${gapText}입니다.
 이 지역·대상에 신설하면 좋을 구체적이고 현실적인 프로그램 1개를 제안하세요.
 
 [지역] ${sido} ${sigungu}

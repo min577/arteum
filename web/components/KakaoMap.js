@@ -144,7 +144,8 @@ export default function KakaoMap() {
     openPopup(e.lat, e.lon,
       `<b style="color:#be185d;font-size:13px">🎭 ${esc(e.name)}</b><br/><span style="color:#0d9488;font-size:12px">${esc(e.field)}</span>`
       + `<div style="font-size:12px;color:#64748b;margin-top:3px">📍 ${esc(e.place || e.addr)}</div>`
-      + `<div style="font-size:12px;color:#94a3b8">📅 ${esc(e.start)} ~ ${esc(e.end)} · ${esc(e.charge)}</div>`);
+      + `<div style="font-size:12px;color:#94a3b8">📅 ${esc(e.start)} ~ ${esc(e.end)} · ${esc(e.charge)}</div>`
+      + (e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noreferrer" style="display:inline-block;margin-top:7px;color:#2563eb;font-size:12px;font-weight:600">🔗 행사 정보 바로가기 →</a>` : ``));
   };
   const dot = (lat, lon, color, z, big) => {
     const sz = big ? 16 : 11;
@@ -154,6 +155,19 @@ export default function KakaoMap() {
     });
     ov.setMap(mapRef.current); overlaysRef.current.push(ov);
   };
+
+  // 대상별 전국평균(공급 있는 시군구 기준) → 부족분
+  const avgByTarget = {};
+  if (geo) {
+    const act = geo.features.filter((f) => f.properties.total > 0);
+    TGT.forEach((t) => { avgByTarget[t] = act.length ? act.reduce((s, f) => s + (f.properties[t] || 0), 0) / act.length : 0; });
+  }
+  let diag = null;
+  if (sel) {
+    const need = TGT.map((t) => ({ t, cur: sel[t] || 0, avg: avgByTarget[t] || 0, need: Math.max(0, Math.round((avgByTarget[t] || 0) - (sel[t] || 0))) }))
+      .sort((a, b) => b.need - a.need || a.cur - b.cur);
+    diag = { need, top: need.filter((x) => x.need > 0) };
+  }
 
   const regionPrograms = sel ? programs.filter((p) => p.code === sel.code) : [];
   // 지원사업(행사) 단위로 묶기
@@ -167,13 +181,15 @@ export default function KakaoMap() {
   })();
   let suggestions = [];
   if (sel) {
-    const missing = target === "전체" ? TGT.filter((t) => (sel[t] || 0) === 0) : ((sel[target] || 0) === 0 ? [target] : []);
+    const cand = target === "전체"
+      ? (diag ? diag.top.map((x) => x.t) : [])
+      : (((sel[target] || 0) < (avgByTarget[target] || 0.5)) ? [target] : []);
     const topN = target === "전체" ? 1 : 3;
-    suggestions = missing.map((t) => {
-      const cand = programs.filter((p) => p.target.includes(t) && p.code !== sel.code)
+    suggestions = cand.slice(0, 4).map((t) => {
+      const list = programs.filter((p) => p.target.includes(t) && p.code !== sel.code)
         .map((p) => ({ ...p, d: dist(sel.cy, sel.cx, p.lat, p.lon) }))
         .sort((a, b) => a.d - b.d).slice(0, topN);
-      return { target: t, suppliers: cand };
+      return { target: t, cur: sel[t] || 0, need: (diag ? (diag.need.find((n) => n.t === t)?.need ?? 0) : 0), suppliers: list };
     }).filter((s) => s.suppliers.length);
   }
   const avg = jobs ? jobs.avgPerActiveRegion : 7;
@@ -189,6 +205,14 @@ export default function KakaoMap() {
     if (!ready || !sel) { clearOverlays(); return; }
     clearOverlays();
     const kakao = window.kakao;
+    // 선택 지역 경계 강조
+    if (geo) {
+      const f = geo.features.find((x) => x.properties.code === sel.code);
+      if (f) geomToPaths(f.geometry).forEach((path) => {
+        const ol = new kakao.maps.Polyline({ path: [...path, path[0]], strokeWeight: 4, strokeColor: "#0f172a", strokeOpacity: 0.95 });
+        ol.setMap(mapRef.current); linesRef.current.push(ol);
+      });
+    }
     regionPrograms.forEach((p) => dot(p.lat, p.lon, "#2563eb", 3));
     suggestions.forEach((s) => s.suppliers.forEach((p) => {
       const line = new kakao.maps.Polyline({ path: [new kakao.maps.LatLng(sel.cy, sel.cx), new kakao.maps.LatLng(p.lat, p.lon)], strokeWeight: 2.5, strokeColor: "#f97316", strokeOpacity: 0.9, strokeStyle: "shortdash" });
@@ -196,7 +220,7 @@ export default function KakaoMap() {
       dot(p.lat, p.lon, "#f97316", 4);
     }));
     dot(sel.cy, sel.cx, "#0f172a", 5, true);
-  }, [ready, sel, target, programs]);
+  }, [ready, sel, target, programs, geo]);
 
   useEffect(() => { setAiIdeas({}); setAiLoading({}); }, [sel?.code]);
 
@@ -230,7 +254,7 @@ export default function KakaoMap() {
       const res = await fetch("/api/suggest", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sido: sel.sido, sigungu: sel.name, target: s.target, nearby: s.suppliers,
-          demand: events.length, far: evFar, need: (diag?.need.find((n) => n.t === s.target)?.need ?? 0) }),
+          demand: events.length, far: evFar, need: s.need ?? 0, cur: s.cur ?? 0 }),
       });
       const data = await res.json();
       setAiIdeas((m) => ({ ...m, [s.target]: data }));
@@ -252,19 +276,6 @@ export default function KakaoMap() {
     setSel({ ...p });
     if (mapRef.current && window.kakao) { mapRef.current.setLevel(10); mapRef.current.panTo(new window.kakao.maps.LatLng(p.cy, p.cx)); }
   };
-
-  // 대상별 전국평균(공급 있는 시군구 기준) → 부족분
-  const avgByTarget = {};
-  if (geo) {
-    const act = geo.features.filter((f) => f.properties.total > 0);
-    TGT.forEach((t) => { avgByTarget[t] = act.length ? act.reduce((s, f) => s + (f.properties[t] || 0), 0) / act.length : 0; });
-  }
-  let diag = null;
-  if (sel) {
-    const need = TGT.map((t) => ({ t, cur: sel[t] || 0, avg: avgByTarget[t] || 0, need: Math.max(0, Math.round((avgByTarget[t] || 0) - (sel[t] || 0))) }))
-      .sort((a, b) => b.need - a.need || a.cur - b.cur);
-    diag = { need, top: need.filter((x) => x.need > 0) };
-  }
 
   const gapCount = geo ? geo.features.filter((f) => (target === "전체" ? f.properties.total : f.properties[target] || 0) === 0).length : 0;
   const isGapRegion = sel && (target === "전체" ? sel.total === 0 : (sel[target] || 0) === 0);
@@ -556,7 +567,7 @@ export default function KakaoMap() {
                     <p className="rounded-lg bg-amber-50 p-2 text-[11px] text-amber-700">⚠️ 인근 40km 내 행사 없음 — 가장 가까운 행사를 참고로 표시 (향유 접근성도 취약한 지역)</p>
                   )}
                   {events.map((e, i) => (
-                    <button key={i} onClick={() => showEventInfo(e)} className="w-full rounded-lg border border-pink-100 bg-pink-50/40 p-2 text-left text-[12px] transition hover:border-pink-300 hover:bg-pink-50">
+                    <div key={i} onClick={() => showEventInfo(e)} className="w-full cursor-pointer rounded-lg border border-pink-100 bg-pink-50/40 p-2 text-left text-[12px] transition hover:border-pink-300 hover:bg-pink-50">
                       <div className="flex items-start justify-between gap-2">
                         <span className="font-semibold text-slate-800">{e.name}</span>
                         <span className="shrink-0 rounded bg-pink-100 px-1.5 py-0.5 text-[10px] font-bold text-pink-700">{e.d}km</span>
@@ -564,7 +575,8 @@ export default function KakaoMap() {
                       <div className="mt-0.5 text-[11px] text-slate-500">🎨 {e.field} · {e.charge || "요금정보 없음"}</div>
                       <div className="text-[11px] text-slate-400">📍 {e.addr}</div>
                       <div className="text-[11px] text-slate-400">📅 {e.start}~{e.end}</div>
-                    </button>
+                      {e.url && <a href={e.url} target="_blank" rel="noreferrer" onClick={(ev) => ev.stopPropagation()} className="mt-1 inline-block text-[11px] font-semibold text-blue-600 hover:underline">🔗 행사 정보 바로가기 →</a>}
+                    </div>
                   ))}
                 </div>
               )}

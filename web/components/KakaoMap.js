@@ -1,5 +1,15 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Tour from "./Tour";
+
+const TOUR_STEPS = [
+  { sel: null, title: "이음(EUM)에 오신 걸 환영해요", body: "ARTE 공공데이터로 문화예술교육의 사각지대를 찾아, 공급주체·강사·AI 제안·현재 문화행사까지 한 화면에서 잇는 지도입니다." },
+  { sel: '[data-tour="region"]', title: "① 지역 선택", body: "시·도 → 시·군·구로 지역을 고르거나, 지도에서 직접 클릭하세요." },
+  { sel: '[data-tour="targets"]', title: "② 대상군 필터", body: "유아·아동·…·장애인별로 공급 현황을 색으로 봅니다. 빨강일수록 공백이에요." },
+  { sel: '[data-tour="legend"]', title: "③ 지도 읽기", body: "빨강=프로그램 0건 사각지대, 청록이 진할수록 공급이 많아요. 점은 프로그램·연계공급·문화행사." },
+  { sel: '[data-tour="jobs"]', title: "④ 일자리·인력", body: "문화예술교육은 예술인 일자리와 직결돼요. 전국 일자리·강사 양성 현황을 볼 수 있어요." },
+  { sel: null, title: "지역을 클릭하면 종합 진단", body: "수요·공급 진단 → 인근 공급주체 연계 → AI 프로그램 제안 → 현재 문화행사까지. 🏛 ARTE 기획자와 🧑‍🎨 구직 예술가 모두를 위한 정보예요." },
+];
 
 const TARGETS = ["전체", "유아", "아동", "청소년", "청년", "중장년", "노년", "장애인"];
 const TGT = ["유아", "아동", "청소년", "청년", "중장년", "노년", "장애인"];
@@ -47,6 +57,12 @@ export default function KakaoMap() {
   const [evLoading, setEvLoading] = useState(false);
   const [evFar, setEvFar] = useState(false);
   const [filterSido, setFilterSido] = useState("");
+  const [tourOpen, setTourOpen] = useState(false);
+
+  useEffect(() => {
+    try { if (!localStorage.getItem("eum_tour_done")) setTourOpen(true); } catch {}
+  }, []);
+  const closeTour = () => { setTourOpen(false); try { localStorage.setItem("eum_tour_done", "1"); } catch {} };
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
@@ -259,7 +275,8 @@ export default function KakaoMap() {
 
       {/* ── 좌상단: 타이틀 + 필터 ── */}
       <div className="absolute left-4 top-4 z-10 w-[19rem] space-y-2.5">
-        <div className="rounded-2xl bg-white/95 px-5 py-3.5 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
+        <div className="relative rounded-2xl bg-white/95 px-5 py-3.5 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
+          <button onClick={() => setTourOpen(true)} title="사용 안내" className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[13px] font-bold text-slate-500 transition hover:bg-teal-100 hover:text-teal-700">?</button>
           <div className="flex items-baseline gap-2">
             <h1 className="text-xl font-extrabold tracking-tight text-slate-900">이음</h1>
             <span className="text-sm font-bold text-teal-600">EUM</span>
@@ -270,7 +287,7 @@ export default function KakaoMap() {
 
         <div className="rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
           <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">지역 선택</div>
-          <div className="mb-3 flex gap-1.5">
+          <div className="mb-3 flex gap-1.5" data-tour="region">
             <select value={filterSido} onChange={(e) => setFilterSido(e.target.value)}
               className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[13px] text-slate-700 outline-none focus:border-teal-400">
               <option value="">시·도</option>
@@ -284,13 +301,13 @@ export default function KakaoMap() {
             </select>
           </div>
           <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">대상군 보기</div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5" data-tour="targets">
             {TARGETS.map((t) => (
               <button key={t} onClick={() => setTarget(t)}
                 className={`rounded-full px-3 py-1 text-[13px] font-semibold transition ${target === t ? "bg-teal-600 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-teal-50 hover:text-teal-700"}`}>{t}</button>
             ))}
           </div>
-          <button onClick={() => setShowJobs((v) => !v)}
+          <button onClick={() => setShowJobs((v) => !v)} data-tour="jobs"
             className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-[13px] font-bold text-white shadow-sm transition hover:bg-amber-600">
             👷 전국 일자리·인력 현황 {showJobs ? "▲" : "▼"}
           </button>
@@ -321,7 +338,7 @@ export default function KakaoMap() {
       </div>
 
       {/* ── 좌하단: 범례 ── */}
-      <div className="absolute left-4 bottom-10 z-10 rounded-2xl bg-white/95 px-4 py-3 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
+      <div data-tour="legend" className="absolute left-4 bottom-10 z-10 rounded-2xl bg-white/95 px-4 py-3 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
         <div className="flex items-end gap-3">
           <div>
             <div className="text-[11px] text-slate-500">{target === "전체" ? "프로그램 0건 시군구" : `'${target}' 0건 시군구`}</div>
@@ -564,6 +581,8 @@ export default function KakaoMap() {
       )}
 
       {err && <div className="absolute inset-x-0 top-1/2 z-20 mx-auto w-fit rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow-lg">{err}</div>}
+
+      <Tour steps={TOUR_STEPS} open={tourOpen} onClose={closeTour} />
     </div>
   );
 }

@@ -11,6 +11,12 @@ const TOUR_STEPS = [
   { sel: null, title: "지역을 클릭하면 종합 진단", body: "수요·공급 진단 → 인근 공급주체 연계 → AI 프로그램 제안 → 현재 문화행사까지. 🏛 ARTE 기획자와 🧑‍🎨 구직 예술가 모두를 위한 정보예요." },
 ];
 
+const TOUR2_STEPS = [
+  { sel: '[data-tour="diag"]', title: "종합 진단", body: "이 지역의 문화 수요(현재 행사 수)와 교육 공급 부족(전국평균 대비)을 한눈에. ‘우선 보강 대상’과 두 독자(🏛ARTE/🧑‍🎨예술가) 관점을 보여줘요." },
+  { sel: '[data-tour="link-ai"]', title: "연계 & AI 처방", body: "부족한 대상을 인근 공급주체와 연결하고, ‘✨ AI 프로그램 제안 받기’를 누르면 맞춤 프로그램·필요 강사 역량(연수 실데이터)을 제안받아요." },
+  { sel: '[data-tour="events"]', title: "현재·예정 문화행사", body: "인근에서 지금 열리는 문화행사예요. 카드를 누르면 지도 위치·정보가 뜨고, ‘바로가기’로 행사 페이지로 이동할 수 있어요." },
+];
+
 const TARGETS = ["전체", "유아", "아동", "청소년", "청년", "중장년", "노년", "장애인"];
 const TGT = ["유아", "아동", "청소년", "청년", "중장년", "노년", "장애인"];
 const TODAY = "2026-06-22";
@@ -63,6 +69,12 @@ export default function KakaoMap() {
     try { if (!localStorage.getItem("eum_tour_done")) setTourOpen(true); } catch {}
   }, []);
   const closeTour = () => { setTourOpen(false); try { localStorage.setItem("eum_tour_done", "1"); } catch {} };
+  const [tour2Open, setTour2Open] = useState(false);
+  useEffect(() => {
+    if (!sel || tourOpen) return;
+    try { if (!localStorage.getItem("eum_tour2_done")) setTimeout(() => setTour2Open(true), 400); } catch {}
+  }, [sel?.code]);
+  const closeTour2 = () => { setTour2Open(false); try { localStorage.setItem("eum_tour2_done", "1"); } catch {} };
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
@@ -387,7 +399,7 @@ export default function KakaoMap() {
           <div className="eum-scroll flex-1 overflow-y-auto px-5 py-4">
             {/* 종합 진단 */}
             {diag && (
-              <div className="mb-3 rounded-xl border border-teal-200 bg-teal-50/60 p-3.5">
+              <div data-tour="diag" className="mb-3 rounded-xl border border-teal-200 bg-teal-50/60 p-3.5">
                 <div className="text-[13px] font-extrabold text-teal-800">📊 종합 진단</div>
                 <div className="mt-2 text-[12px] text-slate-700">
                   <b>문화 수요(향유)</b>: 인근 현재·예정 행사 {evLoading ? "…" : `${events.length}건`}
@@ -446,9 +458,9 @@ export default function KakaoMap() {
 
             {/* 연계 제안 + AI */}
             {suggestions.length > 0 && (
-              <div className="mt-3">
-                <div className="mb-1.5 text-[13px] font-extrabold text-orange-600">🔗 연계 & AI 처방 (공백 대상)</div>
-                <p className="mb-2 text-[11px] leading-snug text-slate-500">없는 대상군을 인근 공급주체와 연결하고, AI가 맞춤 프로그램을 제안합니다.</p>
+              <div className="mt-3" data-tour="link-ai">
+                <div className="mb-1.5 text-[13px] font-extrabold text-orange-600">🔗 연계 & AI 처방 (공급 부족 대상)</div>
+                <p className="mb-2 text-[11px] leading-snug text-slate-500">전국 평균에 못 미치는 대상군을 인근 공급주체와 연결하고, AI가 맞춤 프로그램을 제안합니다.</p>
                 <div className="space-y-2.5">
                   {suggestions.map((s) => (
                     <div key={s.target} className="rounded-xl border border-orange-100 bg-orange-50/50 p-3">
@@ -555,7 +567,7 @@ export default function KakaoMap() {
             </div>
 
             {/* 현재·예정 문화행사 (타기관 라이브) */}
-            <div className="mt-3 pb-1">
+            <div className="mt-3 pb-1" data-tour="events">
               <div className="mb-1.5 text-[13px] font-extrabold text-pink-600">🎭 현재·예정 문화행사 <span className="text-slate-400">(참고 · 타기관 라이브)</span></div>
               {evLoading ? (
                 <p className="text-[12px] text-slate-400">불러오는 중…</p>
@@ -595,6 +607,7 @@ export default function KakaoMap() {
       {err && <div className="absolute inset-x-0 top-1/2 z-20 mx-auto w-fit rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow-lg">{err}</div>}
 
       <Tour steps={TOUR_STEPS} open={tourOpen} onClose={closeTour} />
+      <Tour steps={TOUR2_STEPS} open={tour2Open} onClose={closeTour2} />
     </div>
   );
 }

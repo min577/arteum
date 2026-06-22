@@ -320,15 +320,21 @@ export default function KakaoMap() {
                   {regionPrograms.map((p, i) => {
                     const live = p.end && p.end >= TODAY;
                     return (
-                      <div key={i} className="rounded-xl border border-slate-100 p-2.5 text-[12px]">
+                      <button key={i} onClick={() => { if (mapRef.current) { mapRef.current.setLevel(9); mapRef.current.panTo(new window.kakao.maps.LatLng(p.lat, p.lon)); } }}
+                        className="w-full rounded-xl border border-slate-100 p-2.5 text-left text-[12px] transition hover:border-teal-300 hover:bg-teal-50/40">
                         <div className="flex items-start justify-between gap-2">
                           <span className="font-semibold text-slate-800">{p.name}</span>
                           {live ? <span className="shrink-0 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">진행중</span>
                                 : <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-400">종료</span>}
                         </div>
-                        <div className="mt-0.5 text-slate-500">{p.org} · {p.field}</div>
-                        <div className="text-[11px] text-slate-400">{p.target} | {p.start}~{p.end}</div>
-                      </div>
+                        <div className="mt-1 space-y-0.5 text-[11px] text-slate-500">
+                          <div>🏛 {p.org} · <span className="text-teal-700">{p.field}</span></div>
+                          {p.place && <div>📍 {p.place}</div>}
+                          {p.support && <div className="text-slate-400">🏷 {p.support}</div>}
+                          <div className="text-slate-400">👥 {p.target} · 📅 {p.start}~{p.end}</div>
+                        </div>
+                        <div className="mt-1 text-[10px] font-medium text-teal-600">지도에서 위치 보기 →</div>
+                      </button>
                     );
                   })}
                 </div>

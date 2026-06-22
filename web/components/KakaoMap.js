@@ -102,16 +102,6 @@ export default function KakaoMap() {
     iw.open(mapRef.current);
     infoRef.current = iw;
   };
-
-  // 지원사업(행사) 단위로 묶기
-  const progGroups = (() => {
-    const m = {};
-    regionPrograms.forEach((p) => {
-      const k = p.support && p.support.trim() ? p.support.trim() : "개별 운영 프로그램";
-      (m[k] = m[k] || []).push(p);
-    });
-    return Object.entries(m).sort((a, b) => b[1].length - a[1].length);
-  })();
   const dot = (lat, lon, color, z, big) => {
     const sz = big ? 16 : 11;
     const ov = new window.kakao.maps.CustomOverlay({
@@ -122,6 +112,15 @@ export default function KakaoMap() {
   };
 
   const regionPrograms = sel ? programs.filter((p) => p.code === sel.code) : [];
+  // 지원사업(행사) 단위로 묶기
+  const progGroups = (() => {
+    const m = {};
+    regionPrograms.forEach((p) => {
+      const k = p.support && p.support.trim() ? p.support.trim() : "개별 운영 프로그램";
+      (m[k] = m[k] || []).push(p);
+    });
+    return Object.entries(m).sort((a, b) => b[1].length - a[1].length);
+  })();
   let suggestions = [];
   if (sel) {
     const missing = target === "전체" ? TGT.filter((t) => (sel[t] || 0) === 0) : ((sel[target] || 0) === 0 ? [target] : []);
@@ -136,6 +135,11 @@ export default function KakaoMap() {
   const avg = jobs ? jobs.avgPerActiveRegion : 7;
   const jobPotential = sel ? Math.max(0, Math.ceil(avg - sel.total)) : 0;
   const jobsForTarget = (t) => (jobs ? jobs.jobsBySaup.filter((j) => j.target.includes(t)) : []);
+  const trainingFor = (field) => {
+    if (!jobs?.trainingByField || !field) return null;
+    const f = String(field);
+    return jobs.trainingByField.find((t) => f.includes(t.field) || t.field.includes(f)) || null;
+  };
 
   useEffect(() => {
     if (!ready || !sel) { clearOverlays(); return; }
@@ -326,8 +330,29 @@ export default function KakaoMap() {
                           </ul>
                           <div className="mt-2 space-y-0.5 text-[11px] text-slate-600">
                             <div>🤝 <b>연계</b> {aiIdeas[s.target].partner}</div>
-                            <div>👷 <b>강사</b> {aiIdeas[s.target].instructor}</div>
+                            <div>👷 <b>강사 분야</b> {aiIdeas[s.target].instructor}</div>
                           </div>
+                          {(() => { const t = trainingFor(aiIdeas[s.target].field); return (
+                            <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-2">
+                              <div className="text-[11px] font-bold text-blue-700">🧑‍🏫 강사 양성·자격 <span className="font-normal text-blue-400">· ARTE 실데이터</span></div>
+                              <div className="mt-1 text-[11px] text-slate-600">
+                                {t ? <>📊 ‘{t.field}’ 분야 강사 연수 누적 <b>{t.count.toLocaleString()}건</b> · 평균 <b>{t.avgHours}시간</b></>
+                                   : <>📊 ARTE 전체 강사 연수 누적 <b>{jobs?.trainingTotal?.toLocaleString()}건</b></>}
+                              </div>
+                              <div className="text-[11px] text-slate-600">📜 국가자격: <b>문화예술교육사</b> (전문인력양성사업)</div>
+                            </div>
+                          ); })()}
+
+                          {aiIdeas[s.target].competencies?.length > 0 && (
+                            <div className="mt-2 rounded-lg border border-violet-200 bg-white p-2">
+                              <div className="text-[11px] font-bold text-violet-600">✨ AI 추천 준비역량 <span className="font-normal text-violet-300">(참고)</span></div>
+                              <ul className="mt-1 flex flex-wrap gap-1">
+                                {aiIdeas[s.target].competencies.map((c, i) => (
+                                  <li key={i} className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 ring-1 ring-violet-200">{c}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                           <div className="mt-1.5 rounded-lg bg-violet-100 px-2 py-1 text-[11px] font-semibold text-violet-700">📈 {aiIdeas[s.target].effect}</div>
                         </div>
                       ))}

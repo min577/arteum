@@ -58,55 +58,78 @@
   }
  ],
  "trainingByField": [
-  [
-   "국악",
-   9015
-  ],
-  [
-   "무용",
-   3749
-  ],
-  [
-   "연극",
-   3437
-  ],
-  [
-   "만화/애니메이션",
-   1751
-  ],
-  [
-   "영화",
-   1138
-  ],
-  [
-   "공예",
-   459
-  ],
-  [
-   "음악",
-   440
-  ],
-  [
-   "디자인",
-   358
-  ],
-  [
-   "미술",
-   282
-  ],
-  [
-   "사진",
-   187
-  ],
-  [
-   "만화애니",
-   53
-  ],
-  [
-   "노인-미술",
-   37
-  ]
+  {
+   "field": "국악",
+   "count": 9015,
+   "avgHours": 38
+  },
+  {
+   "field": "무용",
+   "count": 3749,
+   "avgHours": 46
+  },
+  {
+   "field": "연극",
+   "count": 3437,
+   "avgHours": 45
+  },
+  {
+   "field": "만화/애니메이션",
+   "count": 1751,
+   "avgHours": 50
+  },
+  {
+   "field": "영화",
+   "count": 1138,
+   "avgHours": 49
+  },
+  {
+   "field": "공예",
+   "count": 459,
+   "avgHours": 47
+  },
+  {
+   "field": "음악",
+   "count": 440,
+   "avgHours": 40
+  },
+  {
+   "field": "디자인",
+   "count": 358,
+   "avgHours": 46
+  },
+  {
+   "field": "미술",
+   "count": 282,
+   "avgHours": 42
+  },
+  {
+   "field": "사진",
+   "count": 187,
+   "avgHours": 46
+  },
+  {
+   "field": "만화애니",
+   "count": 53,
+   "avgHours": 71
+  },
+  {
+   "field": "노인-미술",
+   "count": 37,
+   "avgHours": 47
+  },
+  {
+   "field": "노인-사진",
+   "count": 30,
+   "avgHours": 47
+  },
+  {
+   "field": "장애-미술",
+   "count": 28,
+   "avgHours": 48
+  }
  ],
+ "trainingTotal": 21256,
  "totalPrograms": 1308,
  "activeRegions": 190,
  "emptyRegions": 60,

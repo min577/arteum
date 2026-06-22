@@ -31,8 +31,16 @@ for r in read(JOB):
     jobs.append({"name":name,"target":TARGET_TAG.get(name,"전체"),"n":n})
 jobs.sort(key=lambda x:-x["n"])
 
-field=Counter((r.get("연수분야","") or "").strip() for r in read(TR) if (r.get("연수분야","") or "").strip())
-training=field.most_common(12)
+from collections import defaultdict
+cnt=Counter(); hrs=defaultdict(int)
+for r in read(TR):
+    f=(r.get("연수분야","") or "").strip()
+    if not f: continue
+    cnt[f]+=1
+    h=(r.get("연수시간","") or "").strip()
+    if h.isdigit(): hrs[f]+=int(h)
+training=[{"field":f,"count":c,"avgHours":(round(hrs[f]/c) if c else 0)} for f,c in cnt.most_common(14)]
+training_total=sum(cnt.values())
 
 # 프로그램 분포 기반 추정 파라미터
 prog=json.load(open(os.path.join(WEBPUB,"programs.json"),encoding="utf-8"))
@@ -45,6 +53,7 @@ out={
   "totalJobs2017": total,
   "jobsBySaup": jobs,
   "trainingByField": training,
+  "trainingTotal": training_total,
   "totalPrograms": len(prog), "activeRegions": active, "emptyRegions": empty,
   "avgPerActiveRegion": avg,
   "potentialJobsIfAvg": round(empty*avg),  # 사각지대가 평균 수준 도달 시 최소 신규 강사 일자리(보수적)

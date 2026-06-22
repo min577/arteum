@@ -12,9 +12,11 @@ const SCHEMA = {
     activities: { type: "array", items: { type: "string" }, description: "핵심 활동 3가지" },
     partner: { type: "string", description: "연계 가능한 운영주체/기관 (인근 단체·시설 활용)" },
     instructor: { type: "string", description: "필요한 강사 분야 (일자리 연결)" },
+    competencies: { type: "array", items: { type: "string" }, description: "이 프로그램 강사로 채용되려면 구직자가 갖춰야 할 핵심 역량 3가지 (구체적 기술·경험)" },
+    qualification: { type: "string", description: "권장 자격·경력 (예: 관련 분야 자격증, 교육 경험 등)" },
     effect: { type: "string", description: "기대효과 한 줄" },
   },
-  required: ["title", "field", "summary", "activities", "partner", "instructor", "effect"],
+  required: ["title", "field", "summary", "activities", "partner", "instructor", "competencies", "qualification", "effect"],
   additionalProperties: false,
 };
 
@@ -42,6 +44,7 @@ ${nearbyText}
 - 대상(${target})의 특성에 실제로 맞는 활동일 것
 - 인근 공급주체나 지역 자원을 연계하는 현실적 방안일 것
 - 새 강사 일자리로 이어지는 형태일 것
+- 이 프로그램의 강사로 채용되려는 구직자가 갖춰야 할 구체적 역량(competencies)과 권장 자격(qualification)을 명확히 제시할 것 (구직자가 무엇을 준비해야 하는지 알 수 있게)
 - 과장 없이 실행 가능한 수준으로`;
 
   try {

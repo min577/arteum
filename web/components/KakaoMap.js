@@ -31,7 +31,7 @@ export default function KakaoMap() {
   const polysRef = useRef([]);
   const overlaysRef = useRef([]);
   const linesRef = useRef([]);
-  const infoRef = useRef(null);
+  const popupRef = useRef(null);
   const eventOverlaysRef = useRef([]);
   const [geo, setGeo] = useState(null);
   const [programs, setPrograms] = useState([]);
@@ -45,6 +45,7 @@ export default function KakaoMap() {
   const [aiLoading, setAiLoading] = useState({});
   const [events, setEvents] = useState([]);
   const [evLoading, setEvLoading] = useState(false);
+  const [evFar, setEvFar] = useState(false);
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
@@ -88,36 +89,45 @@ export default function KakaoMap() {
   const clearOverlays = () => {
     overlaysRef.current.forEach((o) => o.setMap(null)); overlaysRef.current = [];
     linesRef.current.forEach((l) => l.setMap(null)); linesRef.current = [];
-    if (infoRef.current) { infoRef.current.close(); infoRef.current = null; }
+    if (popupRef.current) { popupRef.current.setMap(null); popupRef.current = null; }
   };
   const esc = (s) => String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const showInfo = (p) => {
+  const openPopup = (lat, lon, html) => {
     if (!mapRef.current || !window.kakao) return;
     const kakao = window.kakao;
-    const pos = new kakao.maps.LatLng(p.lat, p.lon);
-    mapRef.current.setLevel(8);
+    const pos = new kakao.maps.LatLng(lat, lon);
+    if (mapRef.current.getLevel() > 6) mapRef.current.setLevel(6);
     mapRef.current.panTo(pos);
-    if (infoRef.current) infoRef.current.close();
-    const iw = new kakao.maps.InfoWindow({
-      position: pos, removable: true,
-      content: `<div style="padding:9px 13px;font-size:12px;line-height:1.5;font-family:Pretendard,sans-serif;width:max-content;max-width:320px;white-space:normal"><b style="color:#0f172a">${esc(p.name)}</b><br/><span style="color:#0d9488">${esc(p.field)}</span><br/><span style="color:#64748b">📍 ${esc(p.place)}</span><br/><span style="color:#94a3b8;white-space:nowrap">👥 ${esc(p.target)} · 📅 ${esc(p.start)} ~ ${esc(p.end)}</span></div>`,
-    });
-    iw.open(mapRef.current);
-    infoRef.current = iw;
+    if (popupRef.current) popupRef.current.setMap(null);
+    const el = document.createElement("div");
+    el.style.cssText = "filter:drop-shadow(0 8px 18px rgba(15,23,42,.28))";
+    el.innerHTML =
+      `<div style="position:relative;background:#fff;border-radius:14px;padding:12px 30px 12px 14px;max-width:300px;font-family:Pretendard,sans-serif;line-height:1.5">`
+      + `<div class="eum-x" style="position:absolute;top:7px;right:9px;cursor:pointer;color:#94a3b8;font-size:15px;font-weight:700">×</div>`
+      + html
+      + `</div>`
+      + `<div style="position:absolute;left:50%;bottom:-6px;margin-left:-7px;width:14px;height:14px;background:#fff;transform:rotate(45deg)"></div>`;
+    const ov = new kakao.maps.CustomOverlay({ position: pos, content: el, yAnchor: 1.18, xAnchor: 0.5, zIndex: 100 });
+    el.querySelector(".eum-x").addEventListener("click", () => { ov.setMap(null); if (popupRef.current === ov) popupRef.current = null; });
+    ov.setMap(mapRef.current);
+    popupRef.current = ov;
+  };
+  const showInfo = (p) => {
+    const t = trainingFor(p.field);
+    const tline = `<div style="margin-top:7px;padding-top:7px;border-top:1px solid #eef2f7;font-size:11px;color:#475569">`
+      + (t ? `🧑‍🏫 이 분야 강사 양성: ‘${esc(t.field)}’ 연수 <b>${t.count.toLocaleString()}건</b> · 평균 <b>${t.avgHours}시간</b><br/>` : ``)
+      + `📜 자격: <b>문화예술교육사</b> <span style="color:#94a3b8">(ARTE 실데이터)</span></div>`;
+    openPopup(p.lat, p.lon,
+      `<b style="color:#0f172a;font-size:13px">${esc(p.name)}</b><br/><span style="color:#0d9488;font-size:12px">${esc(p.field)}</span>`
+      + `<div style="font-size:12px;color:#64748b;margin-top:3px">📍 ${esc(p.place)}</div>`
+      + `<div style="font-size:12px;color:#94a3b8">👥 ${esc(p.target)} · 📅 ${esc(p.start)} ~ ${esc(p.end)}</div>`
+      + tline);
   };
   const showEventInfo = (e) => {
-    if (!mapRef.current || !window.kakao) return;
-    const kakao = window.kakao;
-    const pos = new kakao.maps.LatLng(e.lat, e.lon);
-    mapRef.current.setLevel(8);
-    mapRef.current.panTo(pos);
-    if (infoRef.current) infoRef.current.close();
-    const iw = new kakao.maps.InfoWindow({
-      position: pos, removable: true,
-      content: `<div style="padding:9px 13px;font-size:12px;line-height:1.5;font-family:Pretendard,sans-serif;width:max-content;max-width:320px"><b style="color:#be185d">🎭 ${esc(e.name)}</b><br/><span style="color:#0d9488">${esc(e.field)}</span><br/><span style="color:#64748b">📍 ${esc(e.place || e.addr)}</span><br/><span style="color:#94a3b8;white-space:nowrap">📅 ${esc(e.start)} ~ ${esc(e.end)} · ${esc(e.charge)}</span></div>`,
-    });
-    iw.open(mapRef.current);
-    infoRef.current = iw;
+    openPopup(e.lat, e.lon,
+      `<b style="color:#be185d;font-size:13px">🎭 ${esc(e.name)}</b><br/><span style="color:#0d9488;font-size:12px">${esc(e.field)}</span>`
+      + `<div style="font-size:12px;color:#64748b;margin-top:3px">📍 ${esc(e.place || e.addr)}</div>`
+      + `<div style="font-size:12px;color:#94a3b8">📅 ${esc(e.start)} ~ ${esc(e.end)} · ${esc(e.charge)}</div>`);
   };
   const dot = (lat, lon, color, z, big) => {
     const sz = big ? 16 : 11;
@@ -178,8 +188,8 @@ export default function KakaoMap() {
     if (!sel) { setEvents([]); return; }
     setEvLoading(true);
     fetch(`/api/events?cx=${sel.cx}&cy=${sel.cy}`)
-      .then((r) => r.json()).then((d) => setEvents(d.events || []))
-      .catch(() => setEvents([])).finally(() => setEvLoading(false));
+      .then((r) => r.json()).then((d) => { setEvents(d.events || []); setEvFar(!!d.far); })
+      .catch(() => { setEvents([]); setEvFar(false); }).finally(() => setEvLoading(false));
   }, [sel?.code]);
 
   // 행사 마커(분홍)
@@ -450,9 +460,12 @@ export default function KakaoMap() {
               {evLoading ? (
                 <p className="text-[12px] text-slate-400">불러오는 중…</p>
               ) : events.length === 0 ? (
-                <p className="rounded-xl bg-slate-50 p-3 text-[12px] text-slate-500">인근 40km 내 현재·예정 문화행사가 없습니다.</p>
+                <p className="rounded-xl bg-slate-50 p-3 text-[12px] text-slate-500">현재·예정 문화행사 데이터를 불러오지 못했습니다.</p>
               ) : (
                 <div className="space-y-1.5">
+                  {evFar && (
+                    <p className="rounded-lg bg-amber-50 p-2 text-[11px] text-amber-700">⚠️ 인근 40km 내 행사 없음 — 가장 가까운 행사를 참고로 표시 (향유 접근성도 취약한 지역)</p>
+                  )}
                   {events.map((e, i) => (
                     <button key={i} onClick={() => showEventInfo(e)} className="w-full rounded-lg border border-pink-100 bg-pink-50/40 p-2 text-left text-[12px] transition hover:border-pink-300 hover:bg-pink-50">
                       <div className="flex items-start justify-between gap-2">

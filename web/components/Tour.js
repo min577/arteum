@@ -12,10 +12,13 @@ export default function Tour({ steps, open, onClose }) {
     const step = steps[i];
     const calc = () => {
       const el = step && step.sel ? document.querySelector(step.sel) : null;
-      setRect(el ? el.getBoundingClientRect() : null);
+      if (el) {
+        try { el.scrollIntoView({ block: "center", inline: "nearest" }); } catch {}
+        setRect(el.getBoundingClientRect());
+      } else setRect(null);
     };
     calc();
-    const t = setTimeout(calc, 60);
+    const t = setTimeout(calc, 120); // 스크롤 정착 후 재계산
     window.addEventListener("resize", calc);
     return () => { clearTimeout(t); window.removeEventListener("resize", calc); };
   }, [open, i, steps]);
@@ -27,9 +30,13 @@ export default function Tour({ steps, open, onClose }) {
 
   let tt;
   if (box) {
-    const below = box.top + box.height + 14;
-    const w = 320;
-    tt = { top: Math.min(below, window.innerHeight - 230), left: Math.max(12, Math.min(box.left, window.innerWidth - w - 12)) };
+    const W = 320, H = 210, gap = 14;
+    let top;
+    if (box.top + box.height + gap + H <= window.innerHeight) top = box.top + box.height + gap; // 아래
+    else if (box.top - gap - H >= 0) top = box.top - gap - H; // 위
+    else top = Math.max(12, window.innerHeight - H - 12); // 클램프
+    const left = Math.max(12, Math.min(box.left, window.innerWidth - W - 12));
+    tt = { top, left };
   } else {
     tt = { top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
   }

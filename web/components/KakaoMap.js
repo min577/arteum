@@ -46,6 +46,7 @@ export default function KakaoMap() {
   const [events, setEvents] = useState([]);
   const [evLoading, setEvLoading] = useState(false);
   const [evFar, setEvFar] = useState(false);
+  const [filterSido, setFilterSido] = useState("");
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
@@ -102,7 +103,7 @@ export default function KakaoMap() {
     const el = document.createElement("div");
     el.style.cssText = "filter:drop-shadow(0 8px 18px rgba(15,23,42,.28))";
     el.innerHTML =
-      `<div style="position:relative;background:#fff;border-radius:14px;padding:12px 30px 12px 14px;max-width:300px;font-family:Pretendard,sans-serif;line-height:1.5">`
+      `<div style="position:relative;box-sizing:border-box;background:#fff;border-radius:14px;padding:12px 30px 12px 14px;width:280px;max-width:80vw;font-family:Pretendard,sans-serif;line-height:1.5;white-space:normal;overflow-wrap:anywhere;word-break:break-word">`
       + `<div class="eum-x" style="position:absolute;top:7px;right:9px;cursor:pointer;color:#94a3b8;font-size:15px;font-weight:700">×</div>`
       + html
       + `</div>`
@@ -222,6 +223,19 @@ export default function KakaoMap() {
     setAiLoading((m) => ({ ...m, [s.target]: false }));
   };
 
+  useEffect(() => { if (sel) setFilterSido(sel.sido); }, [sel?.code]);
+
+  // 지역 선택(시도→시군구) 인덱스
+  const SIDO_ORDER = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"];
+  const regions = {};
+  if (geo) for (const f of geo.features) { const p = f.properties; (regions[p.sido] = regions[p.sido] || []).push(p); }
+  for (const s in regions) regions[s].sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  const sidos = SIDO_ORDER.filter((s) => regions[s]);
+  const goRegion = (p) => {
+    setSel({ ...p });
+    if (mapRef.current && window.kakao) { mapRef.current.setLevel(10); mapRef.current.panTo(new window.kakao.maps.LatLng(p.cy, p.cx)); }
+  };
+
   const gapCount = geo ? geo.features.filter((f) => (target === "전체" ? f.properties.total : f.properties[target] || 0) === 0).length : 0;
   const isGapRegion = sel && (target === "전체" ? sel.total === 0 : (sel[target] || 0) === 0);
 
@@ -241,6 +255,20 @@ export default function KakaoMap() {
         </div>
 
         <div className="rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
+          <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">지역 선택</div>
+          <div className="mb-3 flex gap-1.5">
+            <select value={filterSido} onChange={(e) => setFilterSido(e.target.value)}
+              className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[13px] text-slate-700 outline-none focus:border-teal-400">
+              <option value="">시·도</option>
+              {sidos.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={sel && sel.sido === filterSido ? sel.name : ""} disabled={!filterSido}
+              onChange={(e) => { const p = (regions[filterSido] || []).find((r) => r.name === e.target.value); if (p) goRegion(p); }}
+              className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[13px] text-slate-700 outline-none focus:border-teal-400 disabled:bg-slate-50 disabled:text-slate-300">
+              <option value="">{filterSido ? "시·군·구" : "시·도 먼저"}</option>
+              {(regions[filterSido] || []).map((r) => <option key={r.code} value={r.name}>{r.name}</option>)}
+            </select>
+          </div>
           <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">대상군 보기</div>
           <div className="flex flex-wrap gap-1.5">
             {TARGETS.map((t) => (

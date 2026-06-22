@@ -31,6 +31,7 @@ export default function KakaoMap() {
   const polysRef = useRef([]);
   const overlaysRef = useRef([]);
   const linesRef = useRef([]);
+  const infoRef = useRef(null);
   const [geo, setGeo] = useState(null);
   const [programs, setPrograms] = useState([]);
   const [jobs, setJobs] = useState(null);
@@ -84,7 +85,33 @@ export default function KakaoMap() {
   const clearOverlays = () => {
     overlaysRef.current.forEach((o) => o.setMap(null)); overlaysRef.current = [];
     linesRef.current.forEach((l) => l.setMap(null)); linesRef.current = [];
+    if (infoRef.current) { infoRef.current.close(); infoRef.current = null; }
   };
+  const esc = (s) => String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const showInfo = (p) => {
+    if (!mapRef.current || !window.kakao) return;
+    const kakao = window.kakao;
+    const pos = new kakao.maps.LatLng(p.lat, p.lon);
+    mapRef.current.setLevel(8);
+    mapRef.current.panTo(pos);
+    if (infoRef.current) infoRef.current.close();
+    const iw = new kakao.maps.InfoWindow({
+      position: pos, removable: true,
+      content: `<div style="padding:8px 11px;font-size:12px;line-height:1.45;font-family:Pretendard,sans-serif;max-width:230px"><b style="color:#0f172a">${esc(p.name)}</b><br/><span style="color:#0d9488">${esc(p.field)}</span><br/><span style="color:#64748b">📍 ${esc(p.place)}</span><br/><span style="color:#94a3b8">👥 ${esc(p.target)} · 📅 ${esc(p.start)}~${esc(p.end)}</span></div>`,
+    });
+    iw.open(mapRef.current);
+    infoRef.current = iw;
+  };
+
+  // 지원사업(행사) 단위로 묶기
+  const progGroups = (() => {
+    const m = {};
+    regionPrograms.forEach((p) => {
+      const k = p.support && p.support.trim() ? p.support.trim() : "개별 운영 프로그램";
+      (m[k] = m[k] || []).push(p);
+    });
+    return Object.entries(m).sort((a, b) => b[1].length - a[1].length);
+  })();
   const dot = (lat, lon, color, z, big) => {
     const sz = big ? 16 : 11;
     const ov = new window.kakao.maps.CustomOverlay({
@@ -310,33 +337,42 @@ export default function KakaoMap() {
               </div>
             )}
 
-            {/* 프로그램 목록 */}
+            {/* 프로그램 목록 — 행사(지원사업)별 그룹 */}
             <div className="mt-3 pb-1">
-              <div className="mb-1.5 text-[13px] font-extrabold text-slate-700">이 지역 프로그램 <span className="text-slate-400">({regionPrograms.length}건)</span></div>
+              <div className="mb-1.5 text-[13px] font-extrabold text-slate-700">
+                행사·프로그램 <span className="text-slate-400">({regionPrograms.length}건 · {progGroups.length}개 사업)</span>
+              </div>
               {regionPrograms.length === 0 ? (
                 <p className="rounded-xl bg-red-50 p-3 text-[12px] leading-snug text-red-600">ARTE 개방데이터상 문화예술교육 프로그램이 확인되지 않는 <b>사각지대</b>입니다.</p>
               ) : (
-                <div className="space-y-1.5">
-                  {regionPrograms.map((p, i) => {
-                    const live = p.end && p.end >= TODAY;
-                    return (
-                      <button key={i} onClick={() => { if (mapRef.current) { mapRef.current.setLevel(9); mapRef.current.panTo(new window.kakao.maps.LatLng(p.lat, p.lon)); } }}
-                        className="w-full rounded-xl border border-slate-100 p-2.5 text-left text-[12px] transition hover:border-teal-300 hover:bg-teal-50/40">
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="font-semibold text-slate-800">{p.name}</span>
-                          {live ? <span className="shrink-0 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">진행중</span>
-                                : <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-400">종료</span>}
-                        </div>
-                        <div className="mt-1 space-y-0.5 text-[11px] text-slate-500">
-                          <div>🏛 {p.org} · <span className="text-teal-700">{p.field}</span></div>
-                          {p.place && <div>📍 {p.place}</div>}
-                          {p.support && <div className="text-slate-400">🏷 {p.support}</div>}
-                          <div className="text-slate-400">👥 {p.target} · 📅 {p.start}~{p.end}</div>
-                        </div>
-                        <div className="mt-1 text-[10px] font-medium text-teal-600">지도에서 위치 보기 →</div>
-                      </button>
-                    );
-                  })}
+                <div className="space-y-2.5">
+                  {progGroups.map(([support, progs]) => (
+                    <div key={support} className="rounded-xl bg-slate-50 p-2.5">
+                      <div className="mb-1.5 flex items-start justify-between gap-2">
+                        <span className="text-[12px] font-bold leading-tight text-slate-700">🏷 {support}</span>
+                        <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500 ring-1 ring-slate-200">{progs.length}개</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {progs.map((p, i) => {
+                          const live = p.end && p.end >= TODAY;
+                          return (
+                            <button key={i} onClick={() => showInfo(p)}
+                              className="w-full rounded-lg border border-slate-100 bg-white p-2 text-left text-[12px] transition hover:border-teal-300 hover:bg-teal-50/40">
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="font-semibold text-slate-800">{p.name}</span>
+                                {live ? <span className="shrink-0 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">진행중</span>
+                                      : <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-400">종료</span>}
+                              </div>
+                              <div className="mt-0.5 text-[11px] text-slate-500">🏛 {p.org} · <span className="text-teal-700">{p.field}</span></div>
+                              {p.place && <div className="text-[11px] text-slate-500">📍 {p.place}</div>}
+                              <div className="text-[11px] text-slate-400">👥 {p.target} · 📅 {p.start}~{p.end}</div>
+                              <div className="mt-0.5 text-[10px] font-medium text-teal-600">지도에서 위치·정보 보기 →</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

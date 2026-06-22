@@ -75,13 +75,14 @@ ok = sum(1 for a in addrs if cache.get(a))
 print(f"\n지오코딩 성공 {ok}/{len(addrs)} ({ok/len(addrs)*100:.0f}%), 신규 {new}, 실패 {fail}")
 
 # enriched CSV
-cols=["구분","단체이름","프로그램명","운영장소명","프로그램분야","프로그램대상","운영주소","시도","시군구","lat","lon"]
+cols=["구분","단체이름","프로그램명","운영장소명","지원사업명","프로그램분야","프로그램대상","운영기간시작","운영기간종료","운영주소","시도","시군구","lat","lon"]
 with open(OUT,"w",encoding="utf-8-sig",newline="") as f:
     w=csv.writer(f); w.writerow(cols)
     for r in rows:
         a=(r.get("운영주소","") or "").strip(); g=cache.get(a) or {}
         w.writerow([r.get("구분",""),r.get("단체이름",""),r.get("프로그램명",""),r.get("운영장소명",""),
-                    r.get("프로그램분야",""),r.get("프로그램대상",""),a,
+                    r.get("지원사업명",""),r.get("프로그램분야",""),r.get("프로그램대상",""),
+                    r.get("운영기간시작",""),r.get("운영기간종료",""),a,
                     g.get("sido",""),g.get("sigungu",""),g.get("lat",""),g.get("lon","")])
 print("저장:", OUT)
 

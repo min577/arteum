@@ -1,0 +1,22 @@
+# ── 비밀키 / 환경설정 (절대 커밋 금지) ──
+.env
+.env.*
+**/.env
+**/.env.*
+
+# ── Node / Next ──
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+out/
+
+# ── Python ──
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ── 대용량 원본/캐시 (재생성 가능) ──
+data/raw/
+data/cache/

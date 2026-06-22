@@ -5,11 +5,13 @@ const TARGETS = ["전체", "유아", "아동", "청소년", "청년", "중장년
 const TGT = ["유아", "아동", "청소년", "청년", "중장년", "노년", "장애인"];
 const TODAY = "2026-06-22";
 
+// 공급량 → 색 (0=사각지대 빨강, 많을수록 진한 청록)
 function shade(v, max) {
-  if (v === 0) return "#E4572E";
+  if (v === 0) return "#ef4444";
   const t = Math.min(v / max, 1);
-  const a = [209, 231, 221], b = [11, 94, 109];
-  const c = a.map((l, i) => Math.round(l + (b[i] - l) * Math.sqrt(t)));
+  const light = [165, 243, 233]; // teal-200
+  const dark = [13, 110, 102];   // teal-700
+  const c = light.map((l, i) => Math.round(l + (dark[i] - l) * Math.sqrt(t)));
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 function geomToPaths(geometry) {
@@ -37,6 +39,8 @@ export default function KakaoMap() {
   const [showJobs, setShowJobs] = useState(false);
   const [ready, setReady] = useState(false);
   const [err, setErr] = useState("");
+  const [aiIdeas, setAiIdeas] = useState({});
+  const [aiLoading, setAiLoading] = useState({});
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
@@ -67,10 +71,10 @@ export default function KakaoMap() {
     geo.features.forEach((f) => {
       const color = shade(valOf(f), max);
       geomToPaths(f.geometry).forEach((path) => {
-        const poly = new kakao.maps.Polygon({ path, fillColor: color, fillOpacity: 0.72, strokeWeight: 1, strokeColor: "#fff", strokeOpacity: 0.7 });
+        const poly = new kakao.maps.Polygon({ path, fillColor: color, fillOpacity: 0.82, strokeWeight: 1, strokeColor: "#ffffff", strokeOpacity: 0.9 });
         poly.setMap(mapRef.current);
-        kakao.maps.event.addListener(poly, "mouseover", () => poly.setOptions({ fillOpacity: 0.92 }));
-        kakao.maps.event.addListener(poly, "mouseout", () => poly.setOptions({ fillOpacity: 0.72 }));
+        kakao.maps.event.addListener(poly, "mouseover", () => poly.setOptions({ fillOpacity: 0.97, strokeWeight: 2.5, strokeColor: "#0f172a" }));
+        kakao.maps.event.addListener(poly, "mouseout", () => poly.setOptions({ fillOpacity: 0.82, strokeWeight: 1, strokeColor: "#ffffff" }));
         kakao.maps.event.addListener(poly, "click", () => setSel({ ...f.properties }));
         polysRef.current.push(poly);
       });
@@ -81,10 +85,11 @@ export default function KakaoMap() {
     overlaysRef.current.forEach((o) => o.setMap(null)); overlaysRef.current = [];
     linesRef.current.forEach((l) => l.setMap(null)); linesRef.current = [];
   };
-  const dot = (lat, lon, color, z) => {
+  const dot = (lat, lon, color, z, big) => {
+    const sz = big ? 16 : 11;
     const ov = new window.kakao.maps.CustomOverlay({
       position: new window.kakao.maps.LatLng(lat, lon), zIndex: z || 2,
-      content: `<div style="width:11px;height:11px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>`,
+      content: `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)"></div>`,
     });
     ov.setMap(mapRef.current); overlaysRef.current.push(ov);
   };
@@ -101,7 +106,6 @@ export default function KakaoMap() {
       return { target: t, suppliers: cand };
     }).filter((s) => s.suppliers.length);
   }
-  // 인력·일자리 추정
   const avg = jobs ? jobs.avgPerActiveRegion : 7;
   const jobPotential = sel ? Math.max(0, Math.ceil(avg - sel.total)) : 0;
   const jobsForTarget = (t) => (jobs ? jobs.jobsBySaup.filter((j) => j.target.includes(t)) : []);
@@ -112,121 +116,192 @@ export default function KakaoMap() {
     const kakao = window.kakao;
     regionPrograms.forEach((p) => dot(p.lat, p.lon, "#2563eb", 3));
     suggestions.forEach((s) => s.suppliers.forEach((p) => {
-      const line = new kakao.maps.Polyline({ path: [new kakao.maps.LatLng(sel.cy, sel.cx), new kakao.maps.LatLng(p.lat, p.lon)], strokeWeight: 2.5, strokeColor: "#E4572E", strokeOpacity: 0.85, strokeStyle: "shortdash" });
+      const line = new kakao.maps.Polyline({ path: [new kakao.maps.LatLng(sel.cy, sel.cx), new kakao.maps.LatLng(p.lat, p.lon)], strokeWeight: 2.5, strokeColor: "#f97316", strokeOpacity: 0.9, strokeStyle: "shortdash" });
       line.setMap(mapRef.current); linesRef.current.push(line);
-      dot(p.lat, p.lon, "#F58518", 4);
+      dot(p.lat, p.lon, "#f97316", 4);
     }));
-    dot(sel.cy, sel.cx, "#111", 5);
+    dot(sel.cy, sel.cx, "#0f172a", 5, true);
   }, [ready, sel, target, programs]);
 
+  useEffect(() => { setAiIdeas({}); setAiLoading({}); }, [sel?.code]);
+
+  const askAI = async (s) => {
+    setAiLoading((m) => ({ ...m, [s.target]: true }));
+    try {
+      const res = await fetch("/api/suggest", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sido: sel.sido, sigungu: sel.name, target: s.target, nearby: s.suppliers }),
+      });
+      const data = await res.json();
+      setAiIdeas((m) => ({ ...m, [s.target]: data }));
+    } catch (e) {
+      setAiIdeas((m) => ({ ...m, [s.target]: { error: String(e) } }));
+    }
+    setAiLoading((m) => ({ ...m, [s.target]: false }));
+  };
+
   const gapCount = geo ? geo.features.filter((f) => (target === "전체" ? f.properties.total : f.properties[target] || 0) === 0).length : 0;
+  const isGapRegion = sel && (target === "전체" ? sel.total === 0 : (sel[target] || 0) === 0);
 
   return (
-    <div className="relative h-screen w-screen">
-      <div ref={mapEl} className="h-full w-full bg-slate-100" />
+    <div className="relative h-screen w-screen overflow-hidden bg-slate-100 text-slate-800">
+      <div ref={mapEl} className="h-full w-full" />
 
-      <div className="absolute left-4 top-4 z-10 rounded-2xl bg-white/95 px-5 py-3 shadow-lg ring-1 ring-black/5">
-        <h1 className="text-lg font-bold text-slate-800">이음 <span className="text-teal-700">EUM</span></h1>
-        <p className="text-xs text-slate-500">문화예술교육 수요·공급·인력 연결 지도 · ARTE 공공데이터</p>
-      </div>
-
-      <div className="absolute left-4 top-24 z-10 flex max-w-[18rem] flex-wrap gap-1.5">
-        {TARGETS.map((t) => (
-          <button key={t} onClick={() => setTarget(t)}
-            className={`rounded-full px-3 py-1 text-sm font-medium shadow ring-1 ring-black/5 transition ${target === t ? "bg-teal-700 text-white" : "bg-white/95 text-slate-700 hover:bg-teal-50"}`}>{t}</button>
-        ))}
-      </div>
-
-      {/* 전국 일자리·인력 토글 */}
-      <button onClick={() => setShowJobs((v) => !v)}
-        className="absolute left-4 top-36 z-10 mt-1 rounded-full bg-orange-600 px-3 py-1 text-sm font-medium text-white shadow ring-1 ring-black/5 hover:bg-orange-700">
-        👷 전국 일자리·인력 {showJobs ? "닫기" : "보기"}
-      </button>
-
-      {showJobs && jobs && (
-        <div className="absolute left-4 top-48 z-10 mt-2 w-72 rounded-2xl bg-white/97 p-4 shadow-xl ring-1 ring-black/5">
-          <div className="text-sm font-bold text-orange-700">문화예술교육 = 예술인 일자리</div>
-          <div className="mt-2 rounded-lg bg-orange-50 p-3">
-            <div className="text-xs text-slate-500">창출 일자리 (2017)</div>
-            <div className="text-2xl font-bold text-slate-800">{jobs.totalJobs2017.toLocaleString()}명</div>
+      {/* ── 좌상단: 타이틀 + 필터 ── */}
+      <div className="absolute left-4 top-4 z-10 w-[19rem] space-y-2.5">
+        <div className="rounded-2xl bg-white/95 px-5 py-3.5 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-xl font-extrabold tracking-tight text-slate-900">이음</h1>
+            <span className="text-sm font-bold text-teal-600">EUM</span>
           </div>
-          <div className="mt-2 rounded-lg bg-teal-50 p-3">
-            <div className="text-xs text-slate-500">사각지대 {jobs.emptyRegions}곳 평균 도달 시 (추정)</div>
-            <div className="text-xl font-bold text-teal-700">+{jobs.potentialJobsIfAvg}개 일자리</div>
-            <div className="text-[10px] text-slate-400">프로그램 1건당 최소 강사 1명 가정</div>
-          </div>
-          <div className="mt-3 text-xs font-semibold text-slate-600">대상별 일자리 사업 (2017)</div>
-          <div className="mt-1 max-h-28 space-y-0.5 overflow-y-auto text-[12px]">
-            {jobs.jobsBySaup.slice(0, 6).map((j, i) => (
-              <div key={i} className="flex justify-between"><span className="text-slate-600">{j.name}<span className="text-slate-400"> ·{j.target}</span></span><span className="font-medium">{j.n.toLocaleString()}</span></div>
+          <p className="mt-0.5 text-[12px] leading-snug text-slate-500">문화예술교육 수요·공급·인력 연결 지도</p>
+          <span className="mt-1.5 inline-block rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700 ring-1 ring-teal-600/15">ARTE 공공데이터 기반</span>
+        </div>
+
+        <div className="rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
+          <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">대상군 보기</div>
+          <div className="flex flex-wrap gap-1.5">
+            {TARGETS.map((t) => (
+              <button key={t} onClick={() => setTarget(t)}
+                className={`rounded-full px-3 py-1 text-[13px] font-semibold transition ${target === t ? "bg-teal-600 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-teal-50 hover:text-teal-700"}`}>{t}</button>
             ))}
           </div>
-          <div className="mt-2 text-[10px] text-slate-400">{jobs.note}</div>
+          <button onClick={() => setShowJobs((v) => !v)}
+            className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-[13px] font-bold text-white shadow-sm transition hover:bg-amber-600">
+            👷 전국 일자리·인력 현황 {showJobs ? "▲" : "▼"}
+          </button>
         </div>
-      )}
 
-      <div className="absolute left-4 bottom-4 z-10 rounded-xl bg-white/95 px-4 py-3 shadow-lg ring-1 ring-black/5">
-        <div className="text-xs text-slate-500">{target === "전체" ? "프로그램 0건 시군구" : `'${target}' 0건 시군구`}</div>
-        <div className="text-2xl font-bold text-[#E4572E]">{gapCount}곳<span className="ml-1 text-sm font-normal text-slate-400">/ 250</span></div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
-          <span className="inline-block h-3 w-3 rounded-sm" style={{ background: "#E4572E" }} /> 사각지대
-          <span className="inline-block h-3 w-3 rounded-sm" style={{ background: "#0b5e6d" }} /> 공급많음
-          <span className="ml-1 inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#2563eb" }} /> 프로그램
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#F58518" }} /> 연계공급
+        {showJobs && jobs && (
+          <div className="rounded-2xl bg-white/97 p-4 shadow-xl ring-1 ring-slate-900/10 backdrop-blur">
+            <div className="text-[13px] font-extrabold text-amber-700">문화예술교육 = 예술인 일자리</div>
+            <div className="mt-2 flex gap-2">
+              <div className="flex-1 rounded-xl bg-amber-50 p-2.5">
+                <div className="text-[11px] text-slate-500">창출 일자리(2017)</div>
+                <div className="text-lg font-extrabold text-slate-900">{jobs.totalJobs2017.toLocaleString()}<span className="text-xs font-bold">명</span></div>
+              </div>
+              <div className="flex-1 rounded-xl bg-teal-50 p-2.5">
+                <div className="text-[11px] text-slate-500">사각지대 해소 시</div>
+                <div className="text-lg font-extrabold text-teal-700">+{jobs.potentialJobsIfAvg}<span className="text-xs font-bold">개</span></div>
+              </div>
+            </div>
+            <div className="mt-3 text-[11px] font-bold text-slate-500">대상별 일자리 사업(2017)</div>
+            <div className="eum-scroll mt-1 max-h-24 space-y-1 overflow-y-auto pr-1 text-[12px]">
+              {jobs.jobsBySaup.slice(0, 6).map((j, i) => (
+                <div key={i} className="flex justify-between"><span className="text-slate-600">{j.name}<span className="text-slate-400"> ·{j.target}</span></span><span className="font-bold text-slate-800">{j.n.toLocaleString()}</span></div>
+              ))}
+            </div>
+            <p className="mt-2 text-[10px] leading-tight text-slate-400">{jobs.note}</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── 좌하단: 범례 ── */}
+      <div className="absolute left-4 bottom-4 z-10 rounded-2xl bg-white/95 px-4 py-3 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
+        <div className="flex items-end gap-3">
+          <div>
+            <div className="text-[11px] text-slate-500">{target === "전체" ? "프로그램 0건 시군구" : `'${target}' 0건 시군구`}</div>
+            <div className="text-2xl font-extrabold text-red-500">{gapCount}<span className="ml-0.5 text-sm font-bold text-slate-400">/ 250곳</span></div>
+          </div>
+        </div>
+        <div className="mt-2 space-y-1.5">
+          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+            <span className="inline-block h-3 w-4 rounded-sm" style={{ background: "#ef4444" }} /> 사각지대(0건)
+            <span className="ml-1 h-3 w-16 rounded-sm" style={{ background: "linear-gradient(90deg,#a5f3e9,#0d6e66)" }} />
+            <span>공급 많음</span>
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-slate-500">
+            <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#2563eb" }} />프로그램</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#f97316" }} />연계 공급</span>
+          </div>
         </div>
       </div>
 
+      {/* ── 우측: 상세 패널 ── */}
       {sel && (
-        <div className="absolute right-4 top-4 z-10 flex max-h-[92vh] w-80 flex-col rounded-2xl bg-white/97 shadow-xl ring-1 ring-black/5">
-          <div className="flex items-start justify-between p-5 pb-2">
-            <div><div className="text-xs text-slate-400">{sel.sido}</div><div className="text-xl font-bold text-slate-800">{sel.name}</div></div>
-            <button onClick={() => setSel(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+        <div className="absolute right-4 top-4 z-10 flex max-h-[calc(100vh-2rem)] w-[23rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={`inline-block h-2.5 w-2.5 rounded-full ${isGapRegion ? "bg-red-500" : "bg-teal-500"}`} />
+                <span className="text-[12px] font-medium text-slate-400">{sel.sido}</span>
+              </div>
+              <div className="text-2xl font-extrabold tracking-tight text-slate-900">{sel.name}</div>
+            </div>
+            <button onClick={() => setSel(null)} className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">✕</button>
           </div>
-          <div className="overflow-y-auto px-5 pb-5">
-            <div className="rounded-lg bg-slate-50 p-3"><div className="text-sm text-slate-500">전체 프로그램</div><div className="text-2xl font-bold text-slate-800">{sel.total}건</div></div>
 
-            <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
-              {TGT.map((t) => (
-                <div key={t} className="flex items-center justify-between"><span className="text-slate-600">{t}</span><span className={`font-semibold ${(sel[t] || 0) === 0 ? "text-[#E4572E]" : "text-slate-800"}`}>{sel[t] || 0}</span></div>
-              ))}
+          <div className="eum-scroll flex-1 overflow-y-auto px-5 py-4">
+            {/* 현황 */}
+            <div className="rounded-xl bg-slate-50 p-3.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-semibold text-slate-500">전체 프로그램</span>
+                <span className="text-2xl font-extrabold text-slate-900">{sel.total}<span className="text-sm font-bold text-slate-400">건</span></span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-1.5">
+                {TGT.map((t) => {
+                  const v = sel[t] || 0;
+                  return (
+                    <div key={t} className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-[13px] ${v === 0 ? "bg-red-50" : "bg-white ring-1 ring-slate-100"}`}>
+                      <span className="text-slate-600">{t}</span>
+                      <span className={`font-bold ${v === 0 ? "text-red-500" : "text-slate-800"}`}>{v}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* 인력·일자리 */}
-            <div className="mt-4 rounded-lg bg-orange-50/70 p-3">
-              <div className="text-sm font-bold text-orange-700">👷 인력·일자리</div>
+            <div className="mt-3 rounded-xl bg-amber-50 p-3.5 ring-1 ring-amber-100">
+              <div className="text-[13px] font-extrabold text-amber-700">👷 인력·일자리</div>
               {jobPotential > 0 ? (
-                <p className="mt-1 text-[12px] text-slate-700">전국 평균(약 {avg}건) 수준 도달 시 <b className="text-orange-700">최소 {jobPotential}명</b>의 강사 일자리 창출 잠재 <span className="text-slate-400">(추정)</span></p>
+                <p className="mt-1.5 text-[13px] leading-snug text-slate-700">전국 평균(약 {avg}건) 도달 시 <b className="text-amber-700">최소 {jobPotential}명</b>의 강사 일자리 창출 잠재 <span className="text-slate-400">(추정)</span></p>
               ) : (
-                <p className="mt-1 text-[12px] text-slate-500">공급이 전국 평균 이상인 지역</p>
-              )}
-              {suggestions.length > 0 && (
-                <div className="mt-2 space-y-1 text-[12px]">
-                  {suggestions.map((s) => {
-                    const jb = jobsForTarget(s.target);
-                    return (
-                      <div key={s.target} className="text-slate-600">
-                        <b>{s.target}</b> 관련 일자리 사업: {jb.length ? jb.map((j) => `${j.name}(${j.n.toLocaleString()}명)`).join(", ") : <span className="text-[#E4572E]">전용 사업 없음 → 신규 창출 필요</span>}
-                      </div>
-                    );
-                  })}
-                </div>
+                <p className="mt-1.5 text-[13px] text-slate-500">공급이 전국 평균 이상인 지역</p>
               )}
             </div>
 
-            {/* 연계 제안 */}
+            {/* 연계 제안 + AI */}
             {suggestions.length > 0 && (
-              <div className="mt-4">
-                <div className="mb-1 text-sm font-bold text-[#E4572E]">🔗 연계 제안 (공백 대상)</div>
-                <p className="mb-2 text-[11px] text-slate-500">없는 대상군을 위해 가장 가까운 공급주체를 연결합니다.</p>
-                <div className="space-y-2">
+              <div className="mt-3">
+                <div className="mb-1.5 text-[13px] font-extrabold text-orange-600">🔗 연계 & AI 처방 (공백 대상)</div>
+                <p className="mb-2 text-[11px] leading-snug text-slate-500">없는 대상군을 인근 공급주체와 연결하고, AI가 맞춤 프로그램을 제안합니다.</p>
+                <div className="space-y-2.5">
                   {suggestions.map((s) => (
-                    <div key={s.target} className="rounded-lg border border-orange-100 bg-orange-50/60 p-2">
-                      <div className="text-xs font-semibold text-orange-700">{s.target} 대상</div>
-                      {s.suppliers.map((p, i) => (
-                        <div key={i} className="mt-1 text-[12px] leading-tight text-slate-700">
-                          <span className="font-medium">{p.org}</span><span className="text-slate-400"> · {p.sigungu}</span>
-                          <span className="ml-1 rounded bg-white px-1 text-[10px] text-orange-600">{Math.round(p.d)}km</span>
-                          <div className="text-[11px] text-slate-500">{p.name}</div>
+                    <div key={s.target} className="rounded-xl border border-orange-100 bg-orange-50/50 p-3">
+                      <div className="text-[13px] font-bold text-orange-700">{s.target} 대상</div>
+                      <div className="mt-1.5 space-y-1.5">
+                        {s.suppliers.map((p, i) => (
+                          <div key={i} className="text-[12px] leading-tight text-slate-700">
+                            <span className="font-semibold">{p.org}</span><span className="text-slate-400"> · {p.sigungu}</span>
+                            <span className="ml-1 rounded bg-white px-1.5 py-0.5 text-[10px] font-bold text-orange-600 ring-1 ring-orange-200">{Math.round(p.d)}km</span>
+                            <div className="text-[11px] text-slate-500">{p.name}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {!aiIdeas[s.target] && (
+                        <button onClick={() => askAI(s)} disabled={aiLoading[s.target]}
+                          className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-2 py-1.5 text-[12px] font-bold text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-60">
+                          {aiLoading[s.target] ? "AI가 프로그램 구상 중…" : "✨ AI 프로그램 제안 받기"}
+                        </button>
+                      )}
+
+                      {aiIdeas[s.target] && (aiIdeas[s.target].error ? (
+                        <p className="mt-2 rounded-lg bg-red-50 p-2 text-[11px] text-red-600">AI 오류: {aiIdeas[s.target].error}</p>
+                      ) : (
+                        <div className="mt-2.5 rounded-xl border border-violet-200 bg-violet-50 p-3">
+                          <div className="text-[13px] font-extrabold text-violet-800">✨ {aiIdeas[s.target].title}</div>
+                          <div className="mt-0.5 text-[11px] font-semibold text-violet-500">{aiIdeas[s.target].field} · {s.target}</div>
+                          <p className="mt-1.5 text-[12px] leading-snug text-slate-700">{aiIdeas[s.target].summary}</p>
+                          <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-[11px] text-slate-600">
+                            {(aiIdeas[s.target].activities || []).map((a, i) => <li key={i}>{a}</li>)}
+                          </ul>
+                          <div className="mt-2 space-y-0.5 text-[11px] text-slate-600">
+                            <div>🤝 <b>연계</b> {aiIdeas[s.target].partner}</div>
+                            <div>👷 <b>강사</b> {aiIdeas[s.target].instructor}</div>
+                          </div>
+                          <div className="mt-1.5 rounded-lg bg-violet-100 px-2 py-1 text-[11px] font-semibold text-violet-700">📈 {aiIdeas[s.target].effect}</div>
                         </div>
                       ))}
                     </div>
@@ -236,19 +311,22 @@ export default function KakaoMap() {
             )}
 
             {/* 프로그램 목록 */}
-            <div className="mt-4">
-              <div className="mb-1 text-sm font-bold text-slate-700">이 지역 프로그램 ({regionPrograms.length}건)</div>
+            <div className="mt-3 pb-1">
+              <div className="mb-1.5 text-[13px] font-extrabold text-slate-700">이 지역 프로그램 <span className="text-slate-400">({regionPrograms.length}건)</span></div>
               {regionPrograms.length === 0 ? (
-                <p className="rounded-lg bg-red-50 p-2 text-xs text-red-600">ARTE 개방데이터상 프로그램이 확인되지 않는 사각지대입니다.</p>
+                <p className="rounded-xl bg-red-50 p-3 text-[12px] leading-snug text-red-600">ARTE 개방데이터상 문화예술교육 프로그램이 확인되지 않는 <b>사각지대</b>입니다.</p>
               ) : (
                 <div className="space-y-1.5">
                   {regionPrograms.map((p, i) => {
                     const live = p.end && p.end >= TODAY;
                     return (
-                      <div key={i} className="rounded-lg border border-slate-100 p-2 text-[12px]">
-                        <div className="flex items-center justify-between"><span className="font-medium text-slate-800">{p.name}</span>
-                          {live ? <span className="rounded bg-green-100 px-1 text-[10px] text-green-700">진행중</span> : <span className="rounded bg-slate-100 px-1 text-[10px] text-slate-400">종료</span>}</div>
-                        <div className="text-slate-500">{p.org} · {p.field}</div>
+                      <div key={i} className="rounded-xl border border-slate-100 p-2.5 text-[12px]">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-semibold text-slate-800">{p.name}</span>
+                          {live ? <span className="shrink-0 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">진행중</span>
+                                : <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-400">종료</span>}
+                        </div>
+                        <div className="mt-0.5 text-slate-500">{p.org} · {p.field}</div>
                         <div className="text-[11px] text-slate-400">{p.target} | {p.start}~{p.end}</div>
                       </div>
                     );
@@ -257,6 +335,12 @@ export default function KakaoMap() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {!sel && ready && (
+        <div className="pointer-events-none absolute bottom-6 left-1/2 z-10 -translate-x-1/2 rounded-full bg-slate-900/80 px-4 py-2 text-[13px] font-medium text-white shadow-lg backdrop-blur">
+          지역을 클릭해 공급 현황·연계·AI 제안을 확인하세요
         </div>
       )}
 

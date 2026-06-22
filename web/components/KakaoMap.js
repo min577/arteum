@@ -97,7 +97,7 @@ export default function KakaoMap() {
     if (infoRef.current) infoRef.current.close();
     const iw = new kakao.maps.InfoWindow({
       position: pos, removable: true,
-      content: `<div style="padding:8px 11px;font-size:12px;line-height:1.45;font-family:Pretendard,sans-serif;max-width:230px"><b style="color:#0f172a">${esc(p.name)}</b><br/><span style="color:#0d9488">${esc(p.field)}</span><br/><span style="color:#64748b">📍 ${esc(p.place)}</span><br/><span style="color:#94a3b8">👥 ${esc(p.target)} · 📅 ${esc(p.start)}~${esc(p.end)}</span></div>`,
+      content: `<div style="padding:9px 13px;font-size:12px;line-height:1.5;font-family:Pretendard,sans-serif;width:max-content;max-width:320px;white-space:normal"><b style="color:#0f172a">${esc(p.name)}</b><br/><span style="color:#0d9488">${esc(p.field)}</span><br/><span style="color:#64748b">📍 ${esc(p.place)}</span><br/><span style="color:#94a3b8;white-space:nowrap">👥 ${esc(p.target)} · 📅 ${esc(p.start)} ~ ${esc(p.end)}</span></div>`,
     });
     iw.open(mapRef.current);
     infoRef.current = iw;
@@ -228,7 +228,7 @@ export default function KakaoMap() {
       </div>
 
       {/* ── 좌하단: 범례 ── */}
-      <div className="absolute left-4 bottom-4 z-10 rounded-2xl bg-white/95 px-4 py-3 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
+      <div className="absolute left-4 bottom-10 z-10 rounded-2xl bg-white/95 px-4 py-3 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
         <div className="flex items-end gap-3">
           <div>
             <div className="text-[11px] text-slate-500">{target === "전체" ? "프로그램 0건 시군구" : `'${target}' 0건 시군구`}</div>

@@ -32,6 +32,7 @@ export default function KakaoMap() {
   const overlaysRef = useRef([]);
   const linesRef = useRef([]);
   const infoRef = useRef(null);
+  const eventOverlaysRef = useRef([]);
   const [geo, setGeo] = useState(null);
   const [programs, setPrograms] = useState([]);
   const [jobs, setJobs] = useState(null);
@@ -42,6 +43,8 @@ export default function KakaoMap() {
   const [err, setErr] = useState("");
   const [aiIdeas, setAiIdeas] = useState({});
   const [aiLoading, setAiLoading] = useState({});
+  const [events, setEvents] = useState([]);
+  const [evLoading, setEvLoading] = useState(false);
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
@@ -102,6 +105,20 @@ export default function KakaoMap() {
     iw.open(mapRef.current);
     infoRef.current = iw;
   };
+  const showEventInfo = (e) => {
+    if (!mapRef.current || !window.kakao) return;
+    const kakao = window.kakao;
+    const pos = new kakao.maps.LatLng(e.lat, e.lon);
+    mapRef.current.setLevel(8);
+    mapRef.current.panTo(pos);
+    if (infoRef.current) infoRef.current.close();
+    const iw = new kakao.maps.InfoWindow({
+      position: pos, removable: true,
+      content: `<div style="padding:9px 13px;font-size:12px;line-height:1.5;font-family:Pretendard,sans-serif;width:max-content;max-width:320px"><b style="color:#be185d">🎭 ${esc(e.name)}</b><br/><span style="color:#0d9488">${esc(e.field)}</span><br/><span style="color:#64748b">📍 ${esc(e.place || e.addr)}</span><br/><span style="color:#94a3b8;white-space:nowrap">📅 ${esc(e.start)} ~ ${esc(e.end)} · ${esc(e.charge)}</span></div>`,
+    });
+    iw.open(mapRef.current);
+    infoRef.current = iw;
+  };
   const dot = (lat, lon, color, z, big) => {
     const sz = big ? 16 : 11;
     const ov = new window.kakao.maps.CustomOverlay({
@@ -155,6 +172,30 @@ export default function KakaoMap() {
   }, [ready, sel, target, programs]);
 
   useEffect(() => { setAiIdeas({}); setAiLoading({}); }, [sel?.code]);
+
+  // 선택 지역 인근 현재·예정 문화행사 (타기관 라이브)
+  useEffect(() => {
+    if (!sel) { setEvents([]); return; }
+    setEvLoading(true);
+    fetch(`/api/events?cx=${sel.cx}&cy=${sel.cy}`)
+      .then((r) => r.json()).then((d) => setEvents(d.events || []))
+      .catch(() => setEvents([])).finally(() => setEvLoading(false));
+  }, [sel?.code]);
+
+  // 행사 마커(분홍)
+  useEffect(() => {
+    eventOverlaysRef.current.forEach((o) => o.setMap(null));
+    eventOverlaysRef.current = [];
+    if (!ready || !mapRef.current || !window.kakao) return;
+    const kakao = window.kakao;
+    events.forEach((e) => {
+      const ov = new kakao.maps.CustomOverlay({
+        position: new kakao.maps.LatLng(e.lat, e.lon), zIndex: 6,
+        content: `<div style="width:10px;height:10px;border-radius:50%;background:#db2777;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
+      });
+      ov.setMap(mapRef.current); eventOverlaysRef.current.push(ov);
+    });
+  }, [ready, events]);
 
   const askAI = async (s) => {
     setAiLoading((m) => ({ ...m, [s.target]: true }));
@@ -244,6 +285,7 @@ export default function KakaoMap() {
           <div className="flex items-center gap-3 text-[11px] text-slate-500">
             <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#2563eb" }} />프로그램</span>
             <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#f97316" }} />연계 공급</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#db2777" }} />문화행사</span>
           </div>
         </div>
       </div>
@@ -400,6 +442,31 @@ export default function KakaoMap() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* 현재·예정 문화행사 (타기관 라이브) */}
+            <div className="mt-3 pb-1">
+              <div className="mb-1.5 text-[13px] font-extrabold text-pink-600">🎭 현재·예정 문화행사 <span className="text-slate-400">(참고 · 타기관 라이브)</span></div>
+              {evLoading ? (
+                <p className="text-[12px] text-slate-400">불러오는 중…</p>
+              ) : events.length === 0 ? (
+                <p className="rounded-xl bg-slate-50 p-3 text-[12px] text-slate-500">인근 40km 내 현재·예정 문화행사가 없습니다.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {events.map((e, i) => (
+                    <button key={i} onClick={() => showEventInfo(e)} className="w-full rounded-lg border border-pink-100 bg-pink-50/40 p-2 text-left text-[12px] transition hover:border-pink-300 hover:bg-pink-50">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-semibold text-slate-800">{e.name}</span>
+                        <span className="shrink-0 rounded bg-pink-100 px-1.5 py-0.5 text-[10px] font-bold text-pink-700">{e.d}km</span>
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-500">🎨 {e.field} · {e.charge || "요금정보 없음"}</div>
+                      <div className="text-[11px] text-slate-400">📍 {e.addr}</div>
+                      <div className="text-[11px] text-slate-400">📅 {e.start}~{e.end}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="mt-1.5 text-[10px] text-slate-400">출처: 전국공연행사정보표준데이터(공공데이터포털) · 종료일 ≥ 오늘</p>
             </div>
           </div>
         </div>

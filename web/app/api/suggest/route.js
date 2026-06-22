@@ -26,10 +26,13 @@ export async function POST(req) {
 
   let body;
   try { body = await req.json(); } catch { return Response.json({ error: "bad request" }, { status: 400 }); }
-  const { sido = "", sigungu = "", target = "", nearby = [] } = body;
+  const { sido = "", sigungu = "", target = "", nearby = [], demand = 0, far = false, need = 0 } = body;
 
   const nearbyText = (nearby || []).slice(0, 3)
     .map((n) => `- ${n.org} (${n.sigungu}, ${n.field || ""})`).join("\n") || "(인근 공급 정보 없음)";
+  const demandText = far
+    ? `인근 40km 내 현재·예정 문화행사 없음 → 향유 접근성도 취약(이중 소외 지역).`
+    : `인근 현재·예정 문화행사 ${demand}건 → 지역에 문화 향유 수요가 ${demand >= 8 ? "활발" : demand >= 3 ? "있음" : "다소 있음"}.`;
 
   const prompt = `당신은 한국문화예술교육진흥원(ARTE)의 문화예술교육 기획 전문가입니다.
 아래 지역은 ARTE 개방데이터 분석 결과 '${target}' 대상 문화예술교육 프로그램이 0건인 사각지대입니다.
@@ -37,6 +40,8 @@ export async function POST(req) {
 
 [지역] ${sido} ${sigungu}
 [소외 대상군] ${target}
+[수요 신호] ${demandText}
+[권장 보강] 전국 평균 대비 ${target} 교육 약 ${need}건 부족
 [인근 연계 가능 공급주체]
 ${nearbyText}
 

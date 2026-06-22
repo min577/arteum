@@ -213,7 +213,8 @@ export default function KakaoMap() {
     try {
       const res = await fetch("/api/suggest", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sido: sel.sido, sigungu: sel.name, target: s.target, nearby: s.suppliers }),
+        body: JSON.stringify({ sido: sel.sido, sigungu: sel.name, target: s.target, nearby: s.suppliers,
+          demand: events.length, far: evFar, need: (diag?.need.find((n) => n.t === s.target)?.need ?? 0) }),
       });
       const data = await res.json();
       setAiIdeas((m) => ({ ...m, [s.target]: data }));
@@ -235,6 +236,19 @@ export default function KakaoMap() {
     setSel({ ...p });
     if (mapRef.current && window.kakao) { mapRef.current.setLevel(10); mapRef.current.panTo(new window.kakao.maps.LatLng(p.cy, p.cx)); }
   };
+
+  // 대상별 전국평균(공급 있는 시군구 기준) → 부족분
+  const avgByTarget = {};
+  if (geo) {
+    const act = geo.features.filter((f) => f.properties.total > 0);
+    TGT.forEach((t) => { avgByTarget[t] = act.length ? act.reduce((s, f) => s + (f.properties[t] || 0), 0) / act.length : 0; });
+  }
+  let diag = null;
+  if (sel) {
+    const need = TGT.map((t) => ({ t, cur: sel[t] || 0, avg: avgByTarget[t] || 0, need: Math.max(0, Math.round((avgByTarget[t] || 0) - (sel[t] || 0))) }))
+      .sort((a, b) => b.need - a.need || a.cur - b.cur);
+    diag = { need, top: need.filter((x) => x.need > 0) };
+  }
 
   const gapCount = geo ? geo.features.filter((f) => (target === "전체" ? f.properties.total : f.properties[target] || 0) === 0).length : 0;
   const isGapRegion = sel && (target === "전체" ? sel.total === 0 : (sel[target] || 0) === 0);
@@ -343,6 +357,36 @@ export default function KakaoMap() {
           </div>
 
           <div className="eum-scroll flex-1 overflow-y-auto px-5 py-4">
+            {/* 종합 진단 */}
+            {diag && (
+              <div className="mb-3 rounded-xl border border-teal-200 bg-teal-50/60 p-3.5">
+                <div className="text-[13px] font-extrabold text-teal-800">📊 종합 진단</div>
+                <div className="mt-2 text-[12px] text-slate-700">
+                  <b>문화 수요(향유)</b>: 인근 현재·예정 행사 {evLoading ? "…" : `${events.length}건`}
+                  {!evLoading && <span className="text-slate-400"> · {evFar ? "40km 내 없음(취약)" : events.length >= 8 ? "활발" : events.length >= 3 ? "보통" : "저조"}</span>}
+                </div>
+                <div className="mt-2 text-[12px] text-slate-700">
+                  <b>교육 공급 부족</b> <span className="text-slate-400">(전국평균 대비)</span>
+                  <div className="mt-1 space-y-0.5">
+                    {diag.top.slice(0, 4).map((x) => (
+                      <div key={x.t} className="flex items-center justify-between">
+                        <span className={x.cur === 0 ? "font-semibold text-[#E4572E]" : "text-slate-600"}>{x.t} {x.cur}건</span>
+                        <span className="text-slate-500">평균 {x.avg.toFixed(1)} · <b className="text-teal-700">+{x.need}건 권장</b></span>
+                      </div>
+                    ))}
+                    {diag.top.length === 0 && <div className="text-slate-500">전 대상 전국평균 이상 — 공급 양호</div>}
+                  </div>
+                </div>
+                {diag.top[0] && (
+                  <div className="mt-2.5 space-y-1 rounded-lg bg-white p-2.5 text-[12px] ring-1 ring-teal-100">
+                    <div>💡 <b className="text-teal-800">우선 보강: {diag.top[0].t}</b> {evFar ? "— 수요·공급 모두 취약(이중소외)" : events.length > 0 ? "— 인근 문화수요 확인, 우선순위 ↑" : ""}</div>
+                    <div className="text-[11px] text-slate-500">🏛 <b>ARTE</b>: {diag.top[0].t} 교육 +{diag.top[0].need}건 신설 검토 → 아래 연계·AI 제안 참고</div>
+                    <div className="text-[11px] text-slate-500">🧑‍🎨 <b>예술가</b>: 이 지역 {diag.top[0].t} 대상 강사 수요 잠재 → 관련 연수·자격 준비 시 진입 유리</div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* 현황 */}
             <div className="rounded-xl bg-slate-50 p-3.5">
               <div className="flex items-center justify-between">

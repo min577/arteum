@@ -65,16 +65,18 @@ export default function KakaoMap() {
   const [filterSido, setFilterSido] = useState("");
   const [tourOpen, setTourOpen] = useState(false);
 
-  useEffect(() => {
-    try { if (!localStorage.getItem("eum_tour_done")) setTourOpen(true); } catch {}
-  }, []);
-  const closeTour = () => { setTourOpen(false); try { localStorage.setItem("eum_tour_done", "1"); } catch {} };
+  // 온보딩: 새로고침마다 1회 실행(세션 단위), 닫으면 그 세션 동안 재실행 안 함
+  useEffect(() => { setTourOpen(true); }, []);
+  const closeTour = () => setTourOpen(false);
   const [tour2Open, setTour2Open] = useState(false);
+  const tour2ShownRef = useRef(false);
   useEffect(() => {
-    if (!sel || tourOpen) return;
-    try { if (!localStorage.getItem("eum_tour2_done")) setTimeout(() => setTour2Open(true), 400); } catch {}
-  }, [sel?.code]);
-  const closeTour2 = () => { setTour2Open(false); try { localStorage.setItem("eum_tour2_done", "1"); } catch {} };
+    if (!sel || tourOpen || tour2ShownRef.current) return;
+    tour2ShownRef.current = true;
+    const t = setTimeout(() => setTour2Open(true), 400);
+    return () => clearTimeout(t);
+  }, [sel?.code, tourOpen]);
+  const closeTour2 = () => setTour2Open(false);
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;

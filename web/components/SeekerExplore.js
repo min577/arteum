@@ -39,7 +39,7 @@ export default function SeekerExplore({ trend, events, jobs, onFindRegion }) {
         <button onClick={onFindRegion} className="mt-4 flex w-full items-center justify-between rounded-xl bg-slate-900 px-5 py-4 text-left text-white transition hover:bg-slate-800">
           <span>
             <span className="text-[15px] font-bold">내 분야로 진입 기회 지역 찾기</span>
-            <span className="mt-0.5 block text-[12px] text-slate-300">대상 선택 → 공백 지역 지도 + 준비 가이드</span>
+            <span className="mt-0.5 block text-[13px] text-slate-300">대상 선택 → 공백 지역 지도 + 준비 가이드</span>
           </span>
           <Arrow />
         </button>
@@ -47,7 +47,7 @@ export default function SeekerExplore({ trend, events, jobs, onFindRegion }) {
         {trend && (
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
             <h3 className="text-[15px] font-extrabold text-slate-900">분야별 관람 수요 추이</h3>
-            <p className="mb-3 mt-0.5 text-[12px] text-slate-500">수요가 오르는 분야를 미리 준비하면 유리해요. (최근 1년 주간조사)</p>
+            <p className="mb-3 mt-0.5 text-[13px] text-slate-500">수요가 오르는 분야를 미리 준비하면 유리해요. (최근 1년 주간조사)</p>
             <Trend data={trend} />
           </section>
         )}
@@ -55,42 +55,42 @@ export default function SeekerExplore({ trend, events, jobs, onFindRegion }) {
         {events && events.length > 0 && (
           <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
             <h3 className="text-[15px] font-extrabold text-slate-900">지금 전국 문화행사</h3>
-            <p className="mb-3 mt-0.5 text-[12px] text-slate-500">현재·예정 행사 — 지역·키워드로 찾아보세요.</p>
+            <p className="mb-3 mt-0.5 text-[13px] text-slate-500">현재·예정 행사 — 지역·키워드로 찾아보세요.</p>
             <Filter sido={evSido} setSido={setEvSido} q={evQ} setQ={setEvQ} options={evOpts} ph="행사명·장소 검색" />
-            <div className="mb-2 text-[11px] text-slate-400">{evFiltered.length}건{evSido ? ` · ${evSido}` : ""}</div>
+            <div className="mb-2 text-[12px] text-slate-400">{evFiltered.length}건{evSido ? ` · ${evSido}` : ""}</div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {evFiltered.slice(0, 30).map((e, i) => (
                 <a key={i} href={e.url || undefined} target={e.url ? "_blank" : undefined} rel="noreferrer" className={`block rounded-lg border border-slate-100 p-3 ${e.url ? "hover:border-teal-300" : ""}`}>
                   <div className="text-[13px] font-semibold text-slate-800">{e.name}</div>
-                  <div className="mt-0.5 text-[11px] text-slate-400">{e.sido || ""} {e.field ? `· ${e.field}` : ""} · {e.place || e.addr || ""}</div>
-                  <div className="text-[11px] text-slate-400">{e.start} ~ {e.end}</div>
+                  <div className="mt-0.5 text-[12px] text-slate-400">{e.sido || ""} {e.field ? `· ${e.field}` : ""} · {e.place || e.addr || ""}</div>
+                  <div className="text-[12px] text-slate-400">{e.start} ~ {e.end}</div>
                 </a>
               ))}
             </div>
-            {evFiltered.length === 0 && <p className="rounded-lg bg-slate-50 p-3 text-[12px] text-slate-500">해당 조건의 행사가 없어요.</p>}
-            {evFiltered.length > 30 && <p className="mt-2 text-[11px] text-slate-400">상위 30건 표시 · 검색으로 좁혀보세요</p>}
+            {evFiltered.length === 0 && <p className="rounded-lg bg-slate-50 p-3 text-[13px] text-slate-500">해당 조건의 행사가 없어요.</p>}
+            {evFiltered.length > 30 && <p className="mt-2 text-[12px] text-slate-400">상위 30건 표시 · 검색으로 좁혀보세요</p>}
           </section>
         )}
 
         {jobs && (
           <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
             <h3 className="text-[15px] font-extrabold text-slate-900">실제 예술강사 채용 사례</h3>
-            <div className="my-2 rounded-lg bg-amber-50 p-2.5 text-[12px] leading-snug text-amber-800">
+            <div className="my-2 rounded-lg bg-amber-50 p-2.5 text-[13px] leading-snug text-amber-800">
               문화예술 채용의 <b>{jobs.stat.metroShare}%가 수도권 집중</b> (ARKO {jobs.stat.withRegion.toLocaleString()}건 분석). 지방 강사 일자리는 신설로 만들어야 합니다.
             </div>
-            <p className="mb-2 text-[11px] text-slate-400">과거 공고 — 어떤 역량을 요구했는지 참고용</p>
+            <p className="mb-2 text-[12px] text-slate-400">과거 공고 — 어떤 역량을 요구했는지 참고용</p>
             <Filter sido={jbSido} setSido={setJbSido} q={jbQ} setQ={setJbQ} options={jbOpts} ph="채용 제목·기관 검색" />
-            <div className="mb-2 text-[11px] text-slate-400">{jbFiltered.length}건{jbSido ? ` · ${jbSido}` : ""}</div>
+            <div className="mb-2 text-[12px] text-slate-400">{jbFiltered.length}건{jbSido ? ` · ${jbSido}` : ""}</div>
             <div className="space-y-2">
               {jbFiltered.slice(0, 10).map((j, i) => (
                 <div key={i} className="rounded-lg border border-slate-100 p-3">
                   <div className="text-[13px] font-semibold text-slate-800">{j.title}</div>
-                  <div className="mt-0.5 text-[11px] text-slate-400">{j.org || "기관"} · {j.area || j.sido || "지역미상"}{j.clos ? ` · ~${j.clos}` : ""}</div>
-                  {j.req && <div className="mt-0.5 text-[11px] leading-snug text-slate-500">{j.req}</div>}
+                  <div className="mt-0.5 text-[12px] text-slate-400">{j.org || "기관"} · {j.area || j.sido || "지역미상"}{j.clos ? ` · ~${j.clos}` : ""}</div>
+                  {j.req && <div className="mt-0.5 text-[12px] leading-snug text-slate-500">{j.req}</div>}
                 </div>
               ))}
             </div>
-            {jbFiltered.length === 0 && <p className="rounded-lg bg-slate-50 p-3 text-[12px] text-slate-500">해당 조건의 채용 사례가 없어요.</p>}
+            {jbFiltered.length === 0 && <p className="rounded-lg bg-slate-50 p-3 text-[13px] text-slate-500">해당 조건의 채용 사례가 없어요.</p>}
           </section>
         )}
       </div>

@@ -26,7 +26,10 @@ export async function POST(req) {
 
   let body;
   try { body = await req.json(); } catch { return Response.json({ error: "bad request" }, { status: 400 }); }
-  const { sido = "", sigungu = "", target = "", nearby = [], demand = 0, far = false, need = 0, cur = 0 } = body;
+  const { sido = "", sigungu = "", target = "", nearby = [], demand = 0, far = false, need = 0, cur = 0, houses = [] } = body;
+  const houseText = (houses || []).length
+    ? (houses).map((h) => `- ${h.name} (${h.sigungu})${h.programs ? ` · 운영: ${String(h.programs).slice(0, 50)}` : ""}`).join("\n")
+    : "(인근 문화의집 정보 없음)";
   const gapText = cur === 0
     ? `'${target}' 대상 문화예술교육 프로그램이 0건인 사각지대`
     : `'${target}' 대상 프로그램이 ${cur}건뿐이라 전국 평균 대비 약 ${need}건 부족한 지역`;
@@ -47,9 +50,12 @@ export async function POST(req) {
 [권장 보강] 전국 평균 대비 ${target} 교육 약 ${need}건 부족
 [인근 연계 가능 공급주체]
 ${nearbyText}
+[인근 활용 가능 거점(문화의집 등 공공 문화시설)]
+${houseText}
 
 조건:
 - 대상(${target})의 특성에 실제로 맞는 활동일 것
+- 가능하면 위 '인근 활용 가능 거점(문화의집)' 중 한 곳을 프로그램 운영 장소로 활용하고, partner에 그 시설명을 포함할 것
 - 인근 공급주체나 지역 자원을 연계하는 현실적 방안일 것
 - 새 강사 일자리로 이어지는 형태일 것
 - 이 프로그램의 강사로 채용되려는 구직자가 갖춰야 할 구체적 역량(competencies)과 권장 자격(qualification)을 명확히 제시할 것 (구직자가 무엇을 준비해야 하는지 알 수 있게)

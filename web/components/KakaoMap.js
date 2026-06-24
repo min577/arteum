@@ -7,18 +7,17 @@ import SeekerExplore from "./SeekerExplore";
 import DemandMode from "./DemandMode";
 
 const TOUR_STEPS = [
-  { sel: null, title: "이음(EUM)에 오신 걸 환영해요", body: "ARTE 공공데이터로 문화예술교육의 사각지대를 찾아, 공급주체·강사·AI 제안·현재 문화행사까지 한 화면에서 잇는 지도입니다." },
-  { sel: '[data-tour="region"]', title: "① 지역 선택", body: "시·도 → 시·군·구로 지역을 고르거나, 지도에서 직접 클릭하세요." },
-  { sel: '[data-tour="targets"]', title: "② 대상군 필터", body: "유아·아동·…·장애인별로 공급 현황을 색으로 봅니다. 빨강일수록 공백이에요." },
-  { sel: '[data-tour="legend"]', title: "③ 지도 읽기", body: "빨강=프로그램 0건 사각지대, 청록이 진할수록 공급이 많아요. 점은 프로그램·연계공급·문화행사." },
-  { sel: '[data-tour="jobs"]', title: "④ 일자리·인력", body: "문화예술교육은 예술인 일자리와 직결돼요. 전국 일자리·강사 양성 현황을 볼 수 있어요." },
-  { sel: null, title: "지역을 클릭하면 종합 진단", body: "수요·공급 진단 → 인근 공급주체 연계 → AI 프로그램 제안 → 현재 문화행사까지. 🏛 ARTE 기획자와 🧑‍🎨 구직 예술가 모두를 위한 정보예요." },
+  { sel: null, title: "기관 모드", body: "지역·대상별 문화예술교육 사각지대를 진단하고, 인근 공급주체·거점과 연계해 신설 프로그램을 설계합니다." },
+  { sel: '[data-tour="region"]', title: "지역 선택", body: "시·도 → 시·군·구로 지역을 고르거나, 지도에서 직접 클릭하세요." },
+  { sel: '[data-tour="targets"]', title: "대상군 필터", body: "유아·아동·…·장애인별로 공급 현황을 색으로 봅니다. 빨강일수록 공백이에요." },
+  { sel: '[data-tour="legend"]', title: "지도 읽기", body: "빨강은 프로그램 0건 사각지대, 청록이 진할수록 공급이 많습니다." },
+  { sel: '[data-tour="jobs"]', title: "일자리·인력", body: "문화예술교육은 예술인 일자리와 직결돼요. 전국 일자리·강사 양성 현황을 볼 수 있습니다." },
+  { sel: null, title: "지역을 클릭하면 종합 진단", body: "지역을 선택하면 우측 패널에서 진단 · 연계·AI · 프로그램 · 행사를 탭으로 확인할 수 있어요." },
 ];
 
 const TOUR2_STEPS = [
-  { sel: '[data-tour="diag"]', title: "종합 진단", body: "이 지역의 문화 수요(현재 행사 수)와 교육 공급 부족(전국평균 대비)을 한눈에. ‘우선 보강 대상’과 두 독자(🏛ARTE/🧑‍🎨예술가) 관점을 보여줘요." },
-  { sel: '[data-tour="link-ai"]', title: "연계 & AI 처방", body: "부족한 대상을 인근 공급주체와 연결하고, ‘✨ AI 프로그램 제안 받기’를 누르면 맞춤 프로그램·필요 강사 역량(연수 실데이터)을 제안받아요." },
-  { sel: '[data-tour="events"]', title: "현재·예정 문화행사", body: "인근에서 지금 열리는 문화행사예요. 카드를 누르면 지도 위치·정보가 뜨고, ‘바로가기’로 행사 페이지로 이동할 수 있어요." },
+  { sel: '[data-tour="diag"]', title: "종합 진단", body: "이 지역의 문화 수요, 교육 공급 부족(전국평균 대비), 인구 대비, 시설 현황을 한눈에. 우선 보강 대상이 표시됩니다." },
+  { sel: '[data-tour="supply-tabs"]', title: "탭으로 더 보기", body: "상단 탭에서 연계·AI 처방, 진행 프로그램, 현재 문화행사로 전환하며 살펴보세요." },
 ];
 
 const TARGETS = ["전체", "유아", "아동", "청소년", "청년", "중장년", "노년", "장애인"];
@@ -299,7 +298,8 @@ export default function KakaoMap() {
       const res = await fetch("/api/suggest", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sido: sel.sido, sigungu: sel.name, target: s.target, nearby: s.suppliers,
-          demand: events.length, far: evFar, need: s.need ?? 0, cur: s.cur ?? 0 }),
+          demand: events.length, far: evFar, need: s.need ?? 0, cur: s.cur ?? 0,
+          houses: nearbyHouses.slice(0, 3).map((h) => ({ name: h.name, sigungu: h.sigungu, programs: h.programs })) }),
       });
       const data = await res.json();
       setAiIdeas((m) => ({ ...m, [s.target]: data }));
@@ -382,27 +382,27 @@ export default function KakaoMap() {
       <div className="absolute left-4 top-4 z-10 w-[19rem] space-y-2.5">
         <div className="relative rounded-2xl bg-white/95 px-5 py-3.5 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
           <button onClick={() => setTourOpen(true)} title="사용 안내" className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[13px] font-bold text-slate-500 transition hover:bg-teal-100 hover:text-teal-700">?</button>
-          <button onClick={() => setEntered(false)} title="역할 선택으로" className="absolute right-10 top-3 flex h-6 items-center justify-center rounded-full bg-slate-100 px-2 text-[11px] font-semibold text-slate-500 transition hover:bg-teal-100 hover:text-teal-700">← 역할</button>
+          <button onClick={() => setEntered(false)} title="역할 선택으로" className="absolute right-10 top-3 flex h-6 items-center justify-center rounded-full bg-slate-100 px-2 text-[12px] font-semibold text-slate-500 transition hover:bg-teal-100 hover:text-teal-700">← 역할</button>
           <div className="flex items-baseline gap-2">
             <h1 className="text-xl font-extrabold tracking-tight text-slate-900">이음</h1>
             <span className="text-sm font-bold text-teal-600">EUM</span>
           </div>
-          <p className="mt-0.5 text-[12px] leading-snug text-slate-500">문화예술교육 수요·공급·인력 연결 지도</p>
-          <span className="mt-1.5 inline-block rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700 ring-1 ring-teal-600/15">ARTE 공공데이터 기반</span>
+          <p className="mt-0.5 text-[13px] leading-snug text-slate-500">문화예술교육 수요·공급·인력 연결 지도</p>
+          <span className="mt-1.5 inline-block rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-700 ring-1 ring-teal-600/15">ARTE 공공데이터 기반</span>
           <div className="mt-2.5 flex gap-1 rounded-xl bg-slate-100 p-1">
             {[["supply", "기관"], ["seeker", "예술강사"], ["demand", "주민"]].map(([r, label]) => (
-              <button key={r} onClick={() => setRole(r)} className={`flex-1 rounded-lg px-1.5 py-1.5 text-[12px] font-bold transition ${role === r ? "bg-white text-teal-700 shadow" : "text-slate-500 hover:text-slate-700"}`}>{label}</button>
+              <button key={r} onClick={() => setRole(r)} className={`flex-1 rounded-lg px-1.5 py-1.5 text-[13px] font-bold transition ${role === r ? "bg-white text-teal-700 shadow" : "text-slate-500 hover:text-slate-700"}`}>{label}</button>
             ))}
           </div>
           {demand?.urbanExp?.["읍면지역"] && (
-            <div className="mt-2 rounded-lg bg-red-50 px-2 py-1 text-[10px] font-semibold leading-snug text-red-700">
+            <div className="mt-2 rounded-lg bg-red-50 px-2 py-1 text-[11px] font-semibold leading-snug text-red-700">
 읍면 문화예술교육 경험률 {demand.urbanExp["읍면지역"]}% = 대도시({demand.urbanExp["대도시"]}%)의 1/{(demand.urbanExp["대도시"] / demand.urbanExp["읍면지역"]).toFixed(1)} · 국민문화예술활동조사
             </div>
           )}
         </div>
 
         <div className="rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
-          <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">지역 선택</div>
+          <div className="mb-2 px-1 text-[12px] font-bold uppercase tracking-wide text-slate-400">지역 선택</div>
           <div className="mb-3 flex gap-1.5" data-tour="region">
             <select value={filterSido} onChange={(e) => setFilterSido(e.target.value)}
               className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[13px] text-slate-700 outline-none focus:border-teal-400">
@@ -416,7 +416,7 @@ export default function KakaoMap() {
               {(regions[filterSido] || []).map((r) => <option key={r.code} value={r.name}>{r.name}</option>)}
             </select>
           </div>
-          <div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">대상군 보기</div>
+          <div className="mb-2 px-1 text-[12px] font-bold uppercase tracking-wide text-slate-400">대상군 보기</div>
           <div className="flex flex-wrap gap-1.5" data-tour="targets">
             {TARGETS.map((t) => (
               <button key={t} onClick={() => setTarget(t)}
@@ -434,21 +434,21 @@ export default function KakaoMap() {
             <div className="text-[13px] font-extrabold text-amber-700">문화예술교육 = 예술인 일자리</div>
             <div className="mt-2 flex gap-2">
               <div className="flex-1 rounded-xl bg-amber-50 p-2.5">
-                <div className="text-[11px] text-slate-500">창출 일자리(2017)</div>
+                <div className="text-[12px] text-slate-500">창출 일자리(2017)</div>
                 <div className="text-lg font-extrabold text-slate-900">{jobs.totalJobs2017.toLocaleString()}<span className="text-xs font-bold">명</span></div>
               </div>
               <div className="flex-1 rounded-xl bg-teal-50 p-2.5">
-                <div className="text-[11px] text-slate-500">사각지대 해소 시</div>
+                <div className="text-[12px] text-slate-500">사각지대 해소 시</div>
                 <div className="text-lg font-extrabold text-teal-700">+{jobs.potentialJobsIfAvg}<span className="text-xs font-bold">개</span></div>
               </div>
             </div>
-            <div className="mt-3 text-[11px] font-bold text-slate-500">대상별 일자리 사업(2017)</div>
-            <div className="eum-scroll mt-1 max-h-24 space-y-1 overflow-y-auto pr-1 text-[12px]">
+            <div className="mt-3 text-[12px] font-bold text-slate-500">대상별 일자리 사업(2017)</div>
+            <div className="eum-scroll mt-1 max-h-24 space-y-1 overflow-y-auto pr-1 text-[13px]">
               {jobs.jobsBySaup.slice(0, 6).map((j, i) => (
                 <div key={i} className="flex justify-between"><span className="text-slate-600">{j.name}<span className="text-slate-400"> ·{j.target}</span></span><span className="font-bold text-slate-800">{j.n.toLocaleString()}</span></div>
               ))}
             </div>
-            <p className="mt-2 text-[10px] leading-tight text-slate-400">{jobs.note}</p>
+            <p className="mt-2 text-[11px] leading-tight text-slate-400">{jobs.note}</p>
           </div>
         )}
       </div>
@@ -457,17 +457,17 @@ export default function KakaoMap() {
       <div data-tour="legend" className="absolute left-4 bottom-10 z-10 rounded-2xl bg-white/95 px-4 py-3 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
         <div className="flex items-end gap-3">
           <div>
-            <div className="text-[11px] text-slate-500">{target === "전체" ? "프로그램 0건 시군구" : `'${target}' 0건 시군구`}</div>
+            <div className="text-[12px] text-slate-500">{target === "전체" ? "프로그램 0건 시군구" : `'${target}' 0건 시군구`}</div>
             <div className="text-2xl font-extrabold text-red-500">{gapCount}<span className="ml-0.5 text-sm font-bold text-slate-400">/ 250곳</span></div>
           </div>
         </div>
         <div className="mt-2 space-y-1.5">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+          <div className="flex items-center gap-2 text-[12px] text-slate-500">
             <span className="inline-block h-3 w-4 rounded-sm" style={{ background: "#ef4444" }} /> 사각지대(0건)
             <span className="ml-1 h-3 w-16 rounded-sm" style={{ background: "linear-gradient(90deg,#a5f3e9,#0d6e66)" }} />
             <span>공급 많음</span>
           </div>
-          <div className="flex items-center gap-3 text-[11px] text-slate-500">
+          <div className="flex items-center gap-3 text-[12px] text-slate-500">
             <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#2563eb" }} />프로그램</span>
             <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#f97316" }} />연계 공급</span>
             <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#db2777" }} />문화행사</span>
@@ -482,16 +482,16 @@ export default function KakaoMap() {
             <div>
               <div className="flex items-center gap-2">
                 <span className={`inline-block h-2.5 w-2.5 rounded-full ${isGapRegion ? "bg-red-500" : "bg-teal-500"}`} />
-                <span className="text-[12px] font-medium text-slate-400">{sel.sido}</span>
+                <span className="text-[13px] font-medium text-slate-400">{sel.sido}</span>
               </div>
               <div className="text-2xl font-extrabold tracking-tight text-slate-900">{sel.name}</div>
             </div>
             <button onClick={() => setSel(null)} className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">✕</button>
           </div>
-          <div className="flex gap-1 border-b border-slate-100 px-3 pb-2">
+          <div data-tour="supply-tabs" className="flex gap-1 border-b border-slate-100 px-3 pb-2">
             {["진단", "연계·AI", "프로그램", "행사"].map((t) => {
               const key = t === "연계·AI" ? "연계" : t;
-              return <button key={t} onClick={() => setSupplyTab(key)} className={`flex-1 rounded-lg py-1.5 text-[12px] font-bold transition ${supplyTab === key ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100"}`}>{t}</button>;
+              return <button key={t} onClick={() => setSupplyTab(key)} className={`flex-1 rounded-lg py-1.5 text-[13px] font-bold transition ${supplyTab === key ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100"}`}>{t}</button>;
             })}
           </div>
 
@@ -501,27 +501,27 @@ export default function KakaoMap() {
             {diag && (
               <div data-tour="diag" className="mb-3 rounded-xl border border-teal-200 bg-teal-50/60 p-3.5">
                 <div className="text-[13px] font-extrabold text-teal-800">📊 종합 진단</div>
-                <div className="mt-2 text-[12px] text-slate-700">
+                <div className="mt-2 text-[13px] text-slate-700">
                   <b>문화 수요(향유)</b>: 인근 현재·예정 행사 {evLoading ? "…" : `${events.length}건`}
                   {!evLoading && <span className="text-slate-400"> · {evFar ? "40km 내 없음(취약)" : events.length >= 8 ? "활발" : events.length >= 3 ? "보통" : "저조"}</span>}
                   {leisureHere && <span className="text-slate-400"><br/>{sel.sido} 문화예술 참여 {leisureHere.part}회/년 · 전국 {leisureHere.rank}/{leisureHere.of}위</span>}
                 </div>
                 {facil && (
-                  <div className="mt-2 text-[12px] text-slate-700">
+                  <div className="mt-2 text-[13px] text-slate-700">
                     <b>문화기반시설</b>: 문화예술회관 <b className={hasHall ? "text-teal-700" : "text-[#E4572E]"}>{hasHall ? "있음" : "없음"}</b> · 문화의집 {housesHere.length}곳
                     {!hasHall && housesHere.length === 0 && <span className="text-[#E4572E]"> (거점 공백)</span>}
                   </div>
                 )}
                 {regionPop && (
-                  <div className="mt-2 text-[12px] text-slate-700">
+                  <div className="mt-2 text-[13px] text-slate-700">
                     <b>인구 대비</b>: {regionPop.toLocaleString()}명 · 1만명당 프로그램 <b className={per10k < popData.per10kNational ? "text-[#E4572E]" : "text-teal-700"}>{per10k}건</b> <span className="text-slate-400">(전국 {popData.per10kNational})</span>
                     {sidoExp != null && <span className="text-slate-400"><br/>{sel.sido} 문화예술교육 경험률 {sidoExp}%</span>}
                   </div>
                 )}
                 {demand?.disabledBySido?.[sel.sido] != null && (sel["장애인"] || 0) === 0 && (
-                  <div className="mt-1 text-[11px] font-semibold text-[#E4572E]">♿ {sel.sido} 등록 장애인 {demand.disabledBySido[sel.sido].toLocaleString()}명인데 장애인 프로그램 0건</div>
+                  <div className="mt-1 text-[12px] font-semibold text-[#E4572E]">♿ {sel.sido} 등록 장애인 {demand.disabledBySido[sel.sido].toLocaleString()}명인데 장애인 프로그램 0건</div>
                 )}
-                <div className="mt-2 text-[12px] text-slate-700">
+                <div className="mt-2 text-[13px] text-slate-700">
                   <b>교육 공급 부족</b> <span className="text-slate-400">(전국평균 대비)</span>
                   <div className="mt-1 space-y-0.5">
                     {diag.top.slice(0, 4).map((x) => (
@@ -534,10 +534,10 @@ export default function KakaoMap() {
                   </div>
                 </div>
                 {diag.top[0] && (
-                  <div className="mt-2.5 space-y-1 rounded-lg bg-white p-2.5 text-[12px] ring-1 ring-teal-100">
+                  <div className="mt-2.5 space-y-1 rounded-lg bg-white p-2.5 text-[13px] ring-1 ring-teal-100">
                     <div>💡 <b className="text-teal-800">우선 보강: {diag.top[0].t}</b> {evFar ? "— 수요·공급 모두 취약(이중소외)" : events.length > 0 ? "— 인근 문화수요 확인, 우선순위 ↑" : ""}</div>
-                    <div className="text-[11px] text-slate-500">🏛 <b>ARTE</b>: {diag.top[0].t} 교육 +{diag.top[0].need}건 신설 검토 → 아래 연계·AI 제안 참고</div>
-                    <div className="text-[11px] text-slate-500">🧑‍🎨 <b>예술가</b>: 이 지역 {diag.top[0].t} 대상 강사 수요 잠재 → 관련 연수·자격 준비 시 진입 유리</div>
+                    <div className="text-[12px] text-slate-500">🏛 <b>ARTE</b>: {diag.top[0].t} 교육 +{diag.top[0].need}건 신설 검토 → 아래 연계·AI 제안 참고</div>
+                    <div className="text-[12px] text-slate-500">🧑‍🎨 <b>예술가</b>: 이 지역 {diag.top[0].t} 대상 강사 수요 잠재 → 관련 연수·자격 준비 시 진입 유리</div>
                   </div>
                 )}
               </div>
@@ -547,15 +547,15 @@ export default function KakaoMap() {
             {nearbyHouses.length > 0 && (
               <div className="mb-3">
                 <div className="mb-1.5 text-[13px] font-extrabold text-emerald-700">🏛 인근 활용 가능 거점 (문화의집)</div>
-                <p className="mb-2 text-[11px] leading-snug text-slate-500">신설 프로그램을 바로 운영할 수 있는 공공 문화시설이에요. 클릭하면 지도에 표시.</p>
+                <p className="mb-2 text-[12px] leading-snug text-slate-500">신설 프로그램을 바로 운영할 수 있는 공공 문화시설이에요. 클릭하면 지도에 표시.</p>
                 <div className="space-y-1.5">
                   {nearbyHouses.map((h, i) => (
-                    <button key={i} onClick={() => showHouseInfo(h)} className="w-full rounded-lg border border-emerald-100 bg-emerald-50/40 p-2 text-left text-[12px] transition hover:border-emerald-300 hover:bg-emerald-50">
+                    <button key={i} onClick={() => showHouseInfo(h)} className="w-full rounded-lg border border-emerald-100 bg-emerald-50/40 p-2 text-left text-[13px] transition hover:border-emerald-300 hover:bg-emerald-50">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-semibold text-slate-700">{h.name}</span>
-                        <span className="shrink-0 text-[11px] text-emerald-700">{h.d}km</span>
+                        <span className="shrink-0 text-[12px] text-emerald-700">{h.d}km</span>
                       </div>
-                      <div className="mt-0.5 text-[11px] text-slate-400">{h.sido} {h.sigungu} · {h.oper}{h.progN ? ` · 연 ${h.progN}개 운영` : ""}</div>
+                      <div className="mt-0.5 text-[12px] text-slate-400">{h.sido} {h.sigungu} · {h.oper}{h.progN ? ` · 연 ${h.progN}개 운영` : ""}</div>
                     </button>
                   ))}
                 </div>
@@ -595,64 +595,64 @@ export default function KakaoMap() {
             {supplyTab === "연계" && (suggestions.length > 0 ? (
               <div data-tour="link-ai">
                 <div className="mb-1.5 text-[13px] font-extrabold text-orange-600">🔗 연계 & AI 처방 (공급 부족 대상)</div>
-                <p className="mb-2 text-[11px] leading-snug text-slate-500">전국 평균에 못 미치는 대상군을 인근 공급주체와 연결하고, AI가 맞춤 프로그램을 제안합니다.</p>
+                <p className="mb-2 text-[12px] leading-snug text-slate-500">전국 평균에 못 미치는 대상군을 인근 공급주체와 연결하고, AI가 맞춤 프로그램을 제안합니다.</p>
                 <div className="space-y-2.5">
                   {suggestions.map((s) => (
                     <div key={s.target} className="rounded-xl border border-orange-100 bg-orange-50/50 p-3">
                       <div className="text-[13px] font-bold text-orange-700">{s.target} 대상</div>
                       <div className="mt-1.5 space-y-1.5">
                         {s.suppliers.map((p, i) => (
-                          <div key={i} className="text-[12px] leading-tight text-slate-700">
+                          <div key={i} className="text-[13px] leading-tight text-slate-700">
                             <span className="font-semibold">{p.org}</span><span className="text-slate-400"> · {p.sigungu}</span>
-                            <span className="ml-1 rounded bg-white px-1.5 py-0.5 text-[10px] font-bold text-orange-600 ring-1 ring-orange-200">{Math.round(p.d)}km</span>
-                            <div className="text-[11px] text-slate-500">{p.name}</div>
+                            <span className="ml-1 rounded bg-white px-1.5 py-0.5 text-[11px] font-bold text-orange-600 ring-1 ring-orange-200">{Math.round(p.d)}km</span>
+                            <div className="text-[12px] text-slate-500">{p.name}</div>
                           </div>
                         ))}
                       </div>
 
                       {!aiIdeas[s.target] && (
                         <button onClick={() => askAI(s)} disabled={aiLoading[s.target]}
-                          className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-2 py-1.5 text-[12px] font-bold text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-60">
+                          className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-2 py-1.5 text-[13px] font-bold text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-60">
                           {aiLoading[s.target] ? "AI가 프로그램 구상 중…" : "✨ AI 프로그램 제안 받기"}
                         </button>
                       )}
 
                       {aiIdeas[s.target] && (aiIdeas[s.target].error ? (
-                        <p className="mt-2 rounded-lg bg-red-50 p-2 text-[11px] text-red-600">AI 오류: {aiIdeas[s.target].error}</p>
+                        <p className="mt-2 rounded-lg bg-red-50 p-2 text-[12px] text-red-600">AI 오류: {aiIdeas[s.target].error}</p>
                       ) : (
                         <div className="mt-2.5 rounded-xl border border-violet-200 bg-violet-50 p-3">
                           <div className="text-[13px] font-extrabold text-violet-800">✨ {aiIdeas[s.target].title}</div>
-                          <div className="mt-0.5 text-[11px] font-semibold text-violet-500">{aiIdeas[s.target].field} · {s.target}</div>
-                          <p className="mt-1.5 text-[12px] leading-snug text-slate-700">{aiIdeas[s.target].summary}</p>
-                          <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-[11px] text-slate-600">
+                          <div className="mt-0.5 text-[12px] font-semibold text-violet-500">{aiIdeas[s.target].field} · {s.target}</div>
+                          <p className="mt-1.5 text-[13px] leading-snug text-slate-700">{aiIdeas[s.target].summary}</p>
+                          <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-[12px] text-slate-600">
                             {(aiIdeas[s.target].activities || []).map((a, i) => <li key={i}>{a}</li>)}
                           </ul>
-                          <div className="mt-2 space-y-0.5 text-[11px] text-slate-600">
+                          <div className="mt-2 space-y-0.5 text-[12px] text-slate-600">
                             <div>🤝 <b>연계</b> {aiIdeas[s.target].partner}</div>
                             <div>👷 <b>강사 분야</b> {aiIdeas[s.target].instructor}</div>
                           </div>
                           {(() => { const t = trainingFor(aiIdeas[s.target].field); return (
                             <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-2">
-                              <div className="text-[11px] font-bold text-blue-700">🧑‍🏫 강사 양성·자격 <span className="font-normal text-blue-400">· ARTE 실데이터</span></div>
-                              <div className="mt-1 text-[11px] text-slate-600">
+                              <div className="text-[12px] font-bold text-blue-700">🧑‍🏫 강사 양성·자격 <span className="font-normal text-blue-400">· ARTE 실데이터</span></div>
+                              <div className="mt-1 text-[12px] text-slate-600">
                                 {t ? <>📊 ‘{t.field}’ 분야 강사 연수 누적 <b>{t.count.toLocaleString()}건</b> · 평균 <b>{t.avgHours}시간</b></>
                                    : <>📊 ARTE 전체 강사 연수 누적 <b>{jobs?.trainingTotal?.toLocaleString()}건</b></>}
                               </div>
-                              <div className="text-[11px] text-slate-600">📜 국가자격: <b>문화예술교육사</b> (전문인력양성사업)</div>
+                              <div className="text-[12px] text-slate-600">📜 국가자격: <b>문화예술교육사</b> (전문인력양성사업)</div>
                             </div>
                           ); })()}
 
                           {aiIdeas[s.target].competencies?.length > 0 && (
                             <div className="mt-2 rounded-lg border border-violet-200 bg-white p-2">
-                              <div className="text-[11px] font-bold text-violet-600">✨ AI 추천 준비역량 <span className="font-normal text-violet-300">(참고)</span></div>
+                              <div className="text-[12px] font-bold text-violet-600">✨ AI 추천 준비역량 <span className="font-normal text-violet-300">(참고)</span></div>
                               <ul className="mt-1 flex flex-wrap gap-1">
                                 {aiIdeas[s.target].competencies.map((c, i) => (
-                                  <li key={i} className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 ring-1 ring-violet-200">{c}</li>
+                                  <li key={i} className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700 ring-1 ring-violet-200">{c}</li>
                                 ))}
                               </ul>
                             </div>
                           )}
-                          <div className="mt-1.5 rounded-lg bg-violet-100 px-2 py-1 text-[11px] font-semibold text-violet-700">📈 {aiIdeas[s.target].effect}</div>
+                          <div className="mt-1.5 rounded-lg bg-violet-100 px-2 py-1 text-[12px] font-semibold text-violet-700">📈 {aiIdeas[s.target].effect}</div>
                         </div>
                       ))}
                     </div>
@@ -667,30 +667,30 @@ export default function KakaoMap() {
                 행사·프로그램 <span className="text-slate-400">({regionPrograms.length}건 · {progGroups.length}개 사업)</span>
               </div>
               {regionPrograms.length === 0 ? (
-                <p className="rounded-xl bg-red-50 p-3 text-[12px] leading-snug text-red-600">ARTE 개방데이터상 문화예술교육 프로그램이 확인되지 않는 <b>사각지대</b>입니다.</p>
+                <p className="rounded-xl bg-red-50 p-3 text-[13px] leading-snug text-red-600">ARTE 개방데이터상 문화예술교육 프로그램이 확인되지 않는 <b>사각지대</b>입니다.</p>
               ) : (
                 <div className="space-y-2.5">
                   {progGroups.map(([support, progs]) => (
                     <div key={support} className="rounded-xl bg-slate-50 p-2.5">
                       <div className="mb-1.5 flex items-start justify-between gap-2">
-                        <span className="text-[12px] font-bold leading-tight text-slate-700">🏷 {support}</span>
-                        <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500 ring-1 ring-slate-200">{progs.length}개</span>
+                        <span className="text-[13px] font-bold leading-tight text-slate-700">🏷 {support}</span>
+                        <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[11px] font-bold text-slate-500 ring-1 ring-slate-200">{progs.length}개</span>
                       </div>
                       <div className="space-y-1.5">
                         {progs.map((p, i) => {
                           const live = p.end && p.end >= TODAY;
                           return (
                             <button key={i} onClick={() => showInfo(p)}
-                              className="w-full rounded-lg border border-slate-100 bg-white p-2 text-left text-[12px] transition hover:border-teal-300 hover:bg-teal-50/40">
+                              className="w-full rounded-lg border border-slate-100 bg-white p-2 text-left text-[13px] transition hover:border-teal-300 hover:bg-teal-50/40">
                               <div className="flex items-start justify-between gap-2">
                                 <span className="font-semibold text-slate-800">{p.name}</span>
-                                {live ? <span className="shrink-0 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">진행중</span>
-                                      : <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-400">종료</span>}
+                                {live ? <span className="shrink-0 rounded bg-green-100 px-1.5 py-0.5 text-[11px] font-bold text-green-700">진행중</span>
+                                      : <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-bold text-slate-400">종료</span>}
                               </div>
-                              <div className="mt-0.5 text-[11px] text-slate-500">🏛 {p.org} · <span className="text-teal-700">{p.field}</span></div>
-                              {p.place && <div className="text-[11px] text-slate-500">📍 {p.place}</div>}
-                              <div className="text-[11px] text-slate-400">👥 {p.target} · 📅 {p.start}~{p.end}</div>
-                              <div className="mt-0.5 text-[10px] font-medium text-teal-600">지도에서 위치·정보 보기 →</div>
+                              <div className="mt-0.5 text-[12px] text-slate-500">🏛 {p.org} · <span className="text-teal-700">{p.field}</span></div>
+                              {p.place && <div className="text-[12px] text-slate-500">📍 {p.place}</div>}
+                              <div className="text-[12px] text-slate-400">👥 {p.target} · 📅 {p.start}~{p.end}</div>
+                              <div className="mt-0.5 text-[11px] font-medium text-teal-600">지도에서 위치·정보 보기 →</div>
                             </button>
                           );
                         })}
@@ -706,29 +706,29 @@ export default function KakaoMap() {
             <div className="pb-1" data-tour="events">
               <div className="mb-1.5 text-[13px] font-extrabold text-pink-600">🎭 현재·예정 문화행사 <span className="text-slate-400">(참고 · 타기관 라이브)</span></div>
               {evLoading ? (
-                <p className="text-[12px] text-slate-400">불러오는 중…</p>
+                <p className="text-[13px] text-slate-400">불러오는 중…</p>
               ) : events.length === 0 ? (
-                <p className="rounded-xl bg-slate-50 p-3 text-[12px] text-slate-500">현재·예정 문화행사 데이터를 불러오지 못했습니다.</p>
+                <p className="rounded-xl bg-slate-50 p-3 text-[13px] text-slate-500">현재·예정 문화행사 데이터를 불러오지 못했습니다.</p>
               ) : (
                 <div className="space-y-1.5">
                   {evFar && (
-                    <p className="rounded-lg bg-amber-50 p-2 text-[11px] text-amber-700">⚠️ 인근 40km 내 행사 없음 — 가장 가까운 행사를 참고로 표시 (향유 접근성도 취약한 지역)</p>
+                    <p className="rounded-lg bg-amber-50 p-2 text-[12px] text-amber-700">⚠️ 인근 40km 내 행사 없음 — 가장 가까운 행사를 참고로 표시 (향유 접근성도 취약한 지역)</p>
                   )}
                   {events.map((e, i) => (
-                    <div key={i} onClick={() => showEventInfo(e)} className="w-full cursor-pointer rounded-lg border border-pink-100 bg-pink-50/40 p-2 text-left text-[12px] transition hover:border-pink-300 hover:bg-pink-50">
+                    <div key={i} onClick={() => showEventInfo(e)} className="w-full cursor-pointer rounded-lg border border-pink-100 bg-pink-50/40 p-2 text-left text-[13px] transition hover:border-pink-300 hover:bg-pink-50">
                       <div className="flex items-start justify-between gap-2">
                         <span className="font-semibold text-slate-800">{e.name}</span>
-                        <span className="shrink-0 rounded bg-pink-100 px-1.5 py-0.5 text-[10px] font-bold text-pink-700">{e.d}km</span>
+                        <span className="shrink-0 rounded bg-pink-100 px-1.5 py-0.5 text-[11px] font-bold text-pink-700">{e.d}km</span>
                       </div>
-                      <div className="mt-0.5 text-[11px] text-slate-500">🎨 {e.field} · {e.charge || "요금정보 없음"}</div>
-                      <div className="text-[11px] text-slate-400">📍 {e.addr}</div>
-                      <div className="text-[11px] text-slate-400">📅 {e.start}~{e.end}</div>
-                      {e.url && <a href={e.url} target="_blank" rel="noreferrer" onClick={(ev) => ev.stopPropagation()} className="mt-1 inline-block text-[11px] font-semibold text-blue-600 hover:underline">🔗 행사 정보 바로가기 →</a>}
+                      <div className="mt-0.5 text-[12px] text-slate-500">🎨 {e.field} · {e.charge || "요금정보 없음"}</div>
+                      <div className="text-[12px] text-slate-400">📍 {e.addr}</div>
+                      <div className="text-[12px] text-slate-400">📅 {e.start}~{e.end}</div>
+                      {e.url && <a href={e.url} target="_blank" rel="noreferrer" onClick={(ev) => ev.stopPropagation()} className="mt-1 inline-block text-[12px] font-semibold text-blue-600 hover:underline">🔗 행사 정보 바로가기 →</a>}
                     </div>
                   ))}
                 </div>
               )}
-              <p className="mt-1.5 text-[10px] text-slate-400">출처: 전국공연행사정보표준데이터(공공데이터포털) · 종료일 ≥ 오늘</p>
+              <p className="mt-1.5 text-[11px] text-slate-400">출처: 전국공연행사정보표준데이터(공공데이터포털) · 종료일 ≥ 오늘</p>
             </div>
             )}
           </div>
@@ -740,33 +740,33 @@ export default function KakaoMap() {
         <div className="absolute right-4 top-16 z-10 flex max-h-[calc(100vh-5rem)] w-[23rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10">
           <div className="border-b border-slate-100 px-5 py-4">
             <div className="text-lg font-extrabold text-slate-900">진입 기회 지역 찾기</div>
-            <p className="mt-0.5 text-[12px] text-slate-500">가르치고 싶은 대상을 고르면, 그 분야가 비어 진입 기회가 큰 지역을 추천해요.</p>
+            <p className="mt-0.5 text-[13px] text-slate-500">가르치고 싶은 대상을 고르면, 그 분야가 비어 진입 기회가 큰 지역을 추천해요.</p>
           </div>
           <div className="eum-scroll flex-1 overflow-y-auto px-5 py-4">
-            <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">어떤 대상을 가르치나요?</div>
+            <div className="text-[12px] font-bold uppercase tracking-wide text-slate-400">어떤 대상을 가르치나요?</div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {TGT.map((t) => (
                 <button key={t} onClick={() => { setSeekTarget(t); setSeekAdvice(null); }} className={`rounded-full px-3 py-1 text-[13px] font-semibold ${seekTarget === t ? "bg-teal-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-teal-50"}`}>{t}</button>
               ))}
             </div>
             {!seekTarget ? (
-              <p className="mt-4 rounded-xl bg-slate-50 p-3 text-[12px] text-slate-500">대상을 선택하면 진입 기회 지역이 나와요.</p>
+              <p className="mt-4 rounded-xl bg-slate-50 p-3 text-[13px] text-slate-500">대상을 선택하면 진입 기회 지역이 나와요.</p>
             ) : (
               <>
                 <div className="mt-4 text-[13px] font-extrabold text-teal-700">‘{seekTarget}’ 진입 기회 지역</div>
-                <p className="mb-1.5 text-[11px] leading-snug text-slate-500">다른 대상은 운영하는데 <b>{seekTarget}</b>만 빠진 = 채우면 바로 자리가 나는 명확한 공백 지역. 클릭하면 지도로 이동.</p>
+                <p className="mb-1.5 text-[12px] leading-snug text-slate-500">다른 대상은 운영하는데 <b>{seekTarget}</b>만 빠진 = 채우면 바로 자리가 나는 명확한 공백 지역. 클릭하면 지도로 이동.</p>
                 <div className="space-y-1.5">
                   {seekRanked.map((p, i) => {
                     const served = TGT.filter((o) => o !== seekTarget && (p[o] || 0) > 0);
                     return (
-                      <button key={p.code} onClick={() => goRegion(p)} className="w-full rounded-lg border border-slate-100 p-2 text-left text-[12px] transition hover:border-teal-300 hover:bg-teal-50/40">
+                      <button key={p.code} onClick={() => goRegion(p)} className="w-full rounded-lg border border-slate-100 p-2 text-left text-[13px] transition hover:border-teal-300 hover:bg-teal-50/40">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-slate-700">{i + 1}. {p.sido} {p.name}</span>
                           {(p[seekTarget] || 0) === 0
-                            ? <span className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600">{seekTarget} 공백</span>
-                            : <span className="shrink-0 text-[11px] text-slate-500">{seekTarget} {p[seekTarget]}건</span>}
+                            ? <span className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[11px] font-bold text-red-600">{seekTarget} 공백</span>
+                            : <span className="shrink-0 text-[12px] text-slate-500">{seekTarget} {p[seekTarget]}건</span>}
                         </div>
-                        <div className="mt-0.5 text-[11px] leading-snug text-slate-400">운영 중: {served.length ? served.join("·") : "—"} <span className="text-slate-300">· 전체 {p.total}건</span></div>
+                        <div className="mt-0.5 text-[12px] leading-snug text-slate-400">운영 중: {served.length ? served.join("·") : "—"} <span className="text-slate-300">· 전체 {p.total}건</span></div>
                       </button>
                     );
                   })}
@@ -775,23 +775,23 @@ export default function KakaoMap() {
                   <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/60 p-3">
                     <div className="text-[13px] font-extrabold text-violet-800">{sel.name} · {seekTarget} 준비 가이드</div>
                     {!seekAdvice && (
-                      <button onClick={askSeekAdvice} disabled={seekLoading} className="mt-2 w-full rounded-lg bg-violet-600 px-2 py-1.5 text-[12px] font-bold text-white hover:bg-violet-700 disabled:opacity-60">{seekLoading ? "AI 분석 중…" : "AI 준비 가이드 받기"}</button>
+                      <button onClick={askSeekAdvice} disabled={seekLoading} className="mt-2 w-full rounded-lg bg-violet-600 px-2 py-1.5 text-[13px] font-bold text-white hover:bg-violet-700 disabled:opacity-60">{seekLoading ? "AI 분석 중…" : "AI 준비 가이드 받기"}</button>
                     )}
                     {seekAdvice && !seekAdvice.error && (
-                      <div className="mt-2 text-[12px] text-slate-700">
+                      <div className="mt-2 text-[13px] text-slate-700">
                         <div className="font-bold text-violet-800">예상 신설 프로그램: {seekAdvice.title}</div>
                         <div className="mt-1.5 rounded-lg border border-blue-200 bg-blue-50 p-2">
-                          <div className="text-[11px] font-bold text-blue-700">준비하면 좋은 역량</div>
-                          <ul className="mt-1 list-disc pl-4 text-[11px] text-slate-600">{(seekAdvice.competencies || []).map((c, i) => <li key={i}>{c}</li>)}</ul>
-                          <div className="mt-1 text-[11px] text-slate-600">권장 자격: {seekAdvice.qualification}</div>
-                          {(() => { const tr = trainingFor(seekAdvice.field); return tr ? <div className="mt-1 text-[11px] text-slate-500">ARTE ‘{tr.field}’ 연수 누적 {tr.count.toLocaleString()}건·평균 {tr.avgHours}시간</div> : null; })()}
+                          <div className="text-[12px] font-bold text-blue-700">준비하면 좋은 역량</div>
+                          <ul className="mt-1 list-disc pl-4 text-[12px] text-slate-600">{(seekAdvice.competencies || []).map((c, i) => <li key={i}>{c}</li>)}</ul>
+                          <div className="mt-1 text-[12px] text-slate-600">권장 자격: {seekAdvice.qualification}</div>
+                          {(() => { const tr = trainingFor(seekAdvice.field); return tr ? <div className="mt-1 text-[12px] text-slate-500">ARTE ‘{tr.field}’ 연수 누적 {tr.count.toLocaleString()}건·평균 {tr.avgHours}시간</div> : null; })()}
                         </div>
                       </div>
                     )}
-                    {seekAdvice?.error && <p className="mt-2 text-[11px] text-red-600">오류: {seekAdvice.error}</p>}
+                    {seekAdvice?.error && <p className="mt-2 text-[12px] text-red-600">오류: {seekAdvice.error}</p>}
                   </div>
                 ) : (
-                  <p className="mt-3 text-[11px] text-slate-400">위 지역을 선택하면 그 지역 맞춤 준비 가이드를 받을 수 있어요.</p>
+                  <p className="mt-3 text-[12px] text-slate-400">위 지역을 선택하면 그 지역 맞춤 준비 가이드를 받을 수 있어요.</p>
                 )}
               </>
             )}
@@ -803,7 +803,7 @@ export default function KakaoMap() {
       {role === "demand" && entered && (
         <DemandMode sidos={sidos} regions={regions} sel={sel} filterSido={filterSido} setFilterSido={setFilterSido}
           goRegion={goRegion} step={demandStep} setStep={setDemandStep} nearEvents={events} allEvents={nationalEvents}
-          evFar={evFar} diag={diag} TGT={TGT} getAppeal={getAppeal} doAppeal={doAppeal} onChangeRole={() => setEntered(false)} />
+          evFar={evFar} diag={diag} TGT={TGT} programs={regionPrograms} today={TODAY} getAppeal={getAppeal} doAppeal={doAppeal} onChangeRole={() => setEntered(false)} />
       )}
 
       {!sel && ready && role === "supply" && (
@@ -816,10 +816,10 @@ export default function KakaoMap() {
 
       {role === "seeker" && entered && (
         <div className="fixed left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full bg-white/95 px-1.5 py-1.5 shadow-lg ring-1 ring-slate-900/10">
-          <button onClick={() => setEntered(false)} className="rounded-full px-2.5 py-1 text-[12px] font-semibold text-slate-500 hover:bg-slate-100">← 역할</button>
+          <button onClick={() => setEntered(false)} className="rounded-full px-2.5 py-1 text-[13px] font-semibold text-slate-500 hover:bg-slate-100">← 역할</button>
           <div className="h-4 w-px bg-slate-200" />
           {[["explore", "탐색"], ["map", "기회 지도"]].map(([v, label]) => (
-            <button key={v} onClick={() => setSeekerView(v)} className={`rounded-full px-3 py-1 text-[12px] font-bold transition ${seekerView === v ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100"}`}>{label}</button>
+            <button key={v} onClick={() => setSeekerView(v)} className={`rounded-full px-3 py-1 text-[13px] font-bold transition ${seekerView === v ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100"}`}>{label}</button>
           ))}
         </div>
       )}

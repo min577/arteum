@@ -52,6 +52,7 @@ export default function KakaoMap() {
   const [geo, setGeo] = useState(null);
   const [programs, setPrograms] = useState([]);
   const [jobs, setJobs] = useState(null);
+  const [artJobs, setArtJobs] = useState(null);
   const [target, setTarget] = useState("전체");
   const [sel, setSel] = useState(null);
   const [showJobs, setShowJobs] = useState(false);
@@ -100,6 +101,7 @@ export default function KakaoMap() {
     fetch("/sigungu.geojson").then((r) => r.json()).then(setGeo).catch(() => setErr("sigungu.geojson 로드 실패"));
     fetch("/programs.json").then((r) => r.json()).then(setPrograms).catch(() => {});
     fetch("/jobs.json").then((r) => r.json()).then(setJobs).catch(() => {});
+    fetch("/artJobs.json").then((r) => r.json()).then(setArtJobs).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -709,6 +711,35 @@ export default function KakaoMap() {
                   <p className="mt-3 text-[11px] text-slate-400">위 지역을 선택하면 그 지역 맞춤 준비 가이드를 받을 수 있어요.</p>
                 )}
               </>
+            )}
+
+            {/* 실제 예술강사 채용 사례 (ARKO) */}
+            {artJobs && (
+              <div className="mt-4 border-t border-slate-100 pt-3">
+                <div className="text-[13px] font-extrabold text-amber-700">💼 실제 예술강사 채용 사례</div>
+                <div className="mt-1.5 rounded-lg bg-amber-50 p-2 text-[11px] leading-snug text-amber-800">
+                  문화예술 채용의 <b>{artJobs.stat.metroShare}%가 수도권 집중</b> (ARKO {artJobs.stat.withRegion.toLocaleString()}건 분석). 지방 강사 일자리는 위 공백 지역 신설로 만들어야 해요.
+                </div>
+                {(() => {
+                  const local = sel ? artJobs.jobs.filter((j) => j.sido === sel.sido) : [];
+                  const show = (local.length ? local : artJobs.jobs).slice(0, 6);
+                  return (
+                    <>
+                      <p className="mb-1.5 mt-2 text-[11px] text-slate-400">{sel && local.length ? `${sel.sido} 채용 사례` : "전국 채용 사례"} · 과거 공고 — 요구 역량 참고용</p>
+                      <div className="space-y-1.5">
+                        {show.map((j, i) => (
+                          <div key={i} className="rounded-lg border border-slate-100 p-2 text-[12px]">
+                            <div className="font-semibold text-slate-700">{j.title}</div>
+                            <div className="mt-0.5 text-[11px] text-slate-400">🏢 {j.org || "기관"} · {j.area || j.sido || "지역미상"}{j.clos ? ` · ~${j.clos}` : ""}</div>
+                            {j.req && <div className="mt-0.5 text-[11px] leading-snug text-slate-500">📋 {j.req}</div>}
+                            {j.url && <a href={j.url} target="_blank" rel="noreferrer" className="mt-0.5 inline-block text-[11px] font-semibold text-blue-600 hover:underline">🔗 공고 보기 →</a>}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
             )}
           </div>
         </div>

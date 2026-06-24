@@ -56,6 +56,8 @@ export default function KakaoMap() {
   const [artJobs, setArtJobs] = useState(null);
   const [facil, setFacil] = useState(null);
   const [viewTrend, setViewTrend] = useState(null);
+  const [popData, setPopData] = useState(null);
+  const [demand, setDemand] = useState(null);
   const [target, setTarget] = useState("전체");
   const [sel, setSel] = useState(null);
   const [showJobs, setShowJobs] = useState(false);
@@ -107,6 +109,8 @@ export default function KakaoMap() {
     fetch("/artJobs.json").then((r) => r.json()).then(setArtJobs).catch(() => {});
     fetch("/facilities.json").then((r) => r.json()).then(setFacil).catch(() => {});
     fetch("/viewTrend.json").then((r) => r.json()).then(setViewTrend).catch(() => {});
+    fetch("/popByCode.json").then((r) => r.json()).then(setPopData).catch(() => {});
+    fetch("/demand.json").then((r) => r.json()).then(setDemand).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -354,6 +358,9 @@ export default function KakaoMap() {
   const nearbyHouses = (facil && sel) ? facil.houses.map((h) => ({ ...h, d: Math.round(dist(sel.cy, sel.cx, h.lat, h.lon)) })).filter((h) => h.d <= 40).sort((a, b) => a.d - b.d).slice(0, 6) : [];
   const hasHall = (facil && sel) ? facil.hallKeys.includes(`${sel.sido}|${sel.name}`) : false;
   const leisureHere = (facil && sel) ? facil.leisure[sel.sido] : null;
+  const regionPop = (popData && sel) ? popData.byCode[String(sel.code)] : null;
+  const per10k = regionPop ? +(sel.total / regionPop * 10000).toFixed(2) : null;
+  const sidoExp = (demand && sel) ? demand.expBySido[sel.sido] : null;
 
   const gapCount = geo ? geo.features.filter((f) => (target === "전체" ? f.properties.total : f.properties[target] || 0) === 0).length : 0;
   const isGapRegion = sel && (target === "전체" ? sel.total === 0 : (sel[target] || 0) === 0);
@@ -377,6 +384,11 @@ export default function KakaoMap() {
               <button key={r} onClick={() => setRole(r)} className={`flex-1 rounded-lg px-1.5 py-1.5 text-[12px] font-bold transition ${role === r ? "bg-white text-teal-700 shadow" : "text-slate-500 hover:text-slate-700"}`}>{label}</button>
             ))}
           </div>
+          {demand?.urbanExp?.["읍면지역"] && (
+            <div className="mt-2 rounded-lg bg-red-50 px-2 py-1 text-[10px] font-semibold leading-snug text-red-700">
+              📊 읍면 문화예술교육 경험률 {demand.urbanExp["읍면지역"]}% = 대도시({demand.urbanExp["대도시"]}%)의 1/{(demand.urbanExp["대도시"] / demand.urbanExp["읍면지역"]).toFixed(1)} (국민문화예술활동조사)
+            </div>
+          )}
         </div>
 
         <div className="rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
@@ -481,6 +493,12 @@ export default function KakaoMap() {
                   <div className="mt-2 text-[12px] text-slate-700">
                     <b>문화기반시설</b>: 문화예술회관 <b className={hasHall ? "text-teal-700" : "text-[#E4572E]"}>{hasHall ? "있음" : "없음"}</b> · 문화의집 {housesHere.length}곳
                     {!hasHall && housesHere.length === 0 && <span className="text-[#E4572E]"> (거점 공백)</span>}
+                  </div>
+                )}
+                {regionPop && (
+                  <div className="mt-2 text-[12px] text-slate-700">
+                    <b>인구 대비</b>: {regionPop.toLocaleString()}명 · 1만명당 프로그램 <b className={per10k < popData.per10kNational ? "text-[#E4572E]" : "text-teal-700"}>{per10k}건</b> <span className="text-slate-400">(전국 {popData.per10kNational})</span>
+                    {sidoExp != null && <span className="text-slate-400"><br/>{sel.sido} 문화예술교육 경험률 {sidoExp}%</span>}
                   </div>
                 )}
                 <div className="mt-2 text-[12px] text-slate-700">

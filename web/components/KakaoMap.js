@@ -304,7 +304,10 @@ export default function KakaoMap() {
         const lacking = props.filter((p) => (p[seekTarget] || 0) < (avgByTarget[seekTarget] || 0.5));
         const pool = lacking.length ? lacking : props;
         const cover = (p) => TGT.filter((o) => o !== seekTarget && (p[o] || 0) > 0).length; // 운영 중인 다른 대상 수
-        return pool.sort((a, b) => (cover(b) - cover(a)) || (b.total - a.total)).slice(0, 10);
+        // 1) 그 대상이 적은(0건) 순  2) 다른 대상 많이 운영(공백 명확)  3) 전체 활동 많은 순
+        return pool.sort((a, b) =>
+          ((a[seekTarget] || 0) - (b[seekTarget] || 0)) || (cover(b) - cover(a)) || (b.total - a.total)
+        ).slice(0, 10);
       })()
     : [];
   const askSeekAdvice = async () => {

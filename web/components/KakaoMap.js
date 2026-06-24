@@ -53,6 +53,7 @@ export default function KakaoMap() {
   const [programs, setPrograms] = useState([]);
   const [jobs, setJobs] = useState(null);
   const [artJobs, setArtJobs] = useState(null);
+  const [facil, setFacil] = useState(null);
   const [target, setTarget] = useState("전체");
   const [sel, setSel] = useState(null);
   const [showJobs, setShowJobs] = useState(false);
@@ -102,6 +103,7 @@ export default function KakaoMap() {
     fetch("/programs.json").then((r) => r.json()).then(setPrograms).catch(() => {});
     fetch("/jobs.json").then((r) => r.json()).then(setJobs).catch(() => {});
     fetch("/artJobs.json").then((r) => r.json()).then(setArtJobs).catch(() => {});
+    fetch("/facilities.json").then((r) => r.json()).then(setFacil).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -167,6 +169,12 @@ export default function KakaoMap() {
       + `<div style="font-size:12px;color:#64748b;margin-top:3px">📍 ${esc(e.place || e.addr)}</div>`
       + `<div style="font-size:12px;color:#94a3b8">📅 ${esc(e.start)} ~ ${esc(e.end)} · ${esc(e.charge)}</div>`
       + (e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noreferrer" style="display:inline-block;margin-top:7px;color:#2563eb;font-size:12px;font-weight:600">🔗 행사 정보 바로가기 →</a>` : ``));
+  };
+  const showHouseInfo = (h) => {
+    openPopup(h.lat, h.lon,
+      `<b style="color:#047857;font-size:13px">🏛 ${esc(h.name)}</b><br/><span style="color:#0d9488;font-size:12px">문화의집 · ${esc(h.oper || "운영")}${h.progN ? ` · 연 ${esc(h.progN)}개 프로그램` : ""}</span>`
+      + (h.programs ? `<div style="font-size:11px;color:#64748b;margin-top:4px"><b>운영 프로그램</b> ${esc(h.programs)}…</div>` : ``)
+      + (h.tel ? `<div style="font-size:11px;color:#94a3b8;margin-top:2px">☎ ${esc(h.tel)}</div>` : ``));
   };
   const dot = (lat, lon, color, z, big) => {
     const sz = big ? 16 : 11;
@@ -338,6 +346,12 @@ export default function KakaoMap() {
     try { return parseInt(localStorage.getItem(k) || "0", 10); } catch { return 0; }
   };
 
+  // 문화기반시설/여가 수요
+  const housesHere = (facil && sel) ? facil.houses.filter((h) => h.sido === sel.sido && h.sigungu === sel.name) : [];
+  const nearbyHouses = (facil && sel) ? facil.houses.map((h) => ({ ...h, d: Math.round(dist(sel.cy, sel.cx, h.lat, h.lon)) })).filter((h) => h.d <= 40).sort((a, b) => a.d - b.d).slice(0, 6) : [];
+  const hasHall = (facil && sel) ? facil.hallKeys.includes(`${sel.sido}|${sel.name}`) : false;
+  const leisureHere = (facil && sel) ? facil.leisure[sel.sido] : null;
+
   const gapCount = geo ? geo.features.filter((f) => (target === "전체" ? f.properties.total : f.properties[target] || 0) === 0).length : 0;
   const isGapRegion = sel && (target === "전체" ? sel.total === 0 : (sel[target] || 0) === 0);
 
@@ -458,7 +472,14 @@ export default function KakaoMap() {
                 <div className="mt-2 text-[12px] text-slate-700">
                   <b>문화 수요(향유)</b>: 인근 현재·예정 행사 {evLoading ? "…" : `${events.length}건`}
                   {!evLoading && <span className="text-slate-400"> · {evFar ? "40km 내 없음(취약)" : events.length >= 8 ? "활발" : events.length >= 3 ? "보통" : "저조"}</span>}
+                  {leisureHere && <span className="text-slate-400"><br/>{sel.sido} 문화예술 참여 {leisureHere.part}회/년 · 전국 {leisureHere.rank}/{leisureHere.of}위</span>}
                 </div>
+                {facil && (
+                  <div className="mt-2 text-[12px] text-slate-700">
+                    <b>문화기반시설</b>: 문화예술회관 <b className={hasHall ? "text-teal-700" : "text-[#E4572E]"}>{hasHall ? "있음" : "없음"}</b> · 문화의집 {housesHere.length}곳
+                    {!hasHall && housesHere.length === 0 && <span className="text-[#E4572E]"> (거점 공백)</span>}
+                  </div>
+                )}
                 <div className="mt-2 text-[12px] text-slate-700">
                   <b>교육 공급 부족</b> <span className="text-slate-400">(전국평균 대비)</span>
                   <div className="mt-1 space-y-0.5">
@@ -478,6 +499,25 @@ export default function KakaoMap() {
                     <div className="text-[11px] text-slate-500">🧑‍🎨 <b>예술가</b>: 이 지역 {diag.top[0].t} 대상 강사 수요 잠재 → 관련 연수·자격 준비 시 진입 유리</div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* 인근 활용 가능 거점 */}
+            {nearbyHouses.length > 0 && (
+              <div className="mb-3">
+                <div className="mb-1.5 text-[13px] font-extrabold text-emerald-700">🏛 인근 활용 가능 거점 (문화의집)</div>
+                <p className="mb-2 text-[11px] leading-snug text-slate-500">신설 프로그램을 바로 운영할 수 있는 공공 문화시설이에요. 클릭하면 지도에 표시.</p>
+                <div className="space-y-1.5">
+                  {nearbyHouses.map((h, i) => (
+                    <button key={i} onClick={() => showHouseInfo(h)} className="w-full rounded-lg border border-emerald-100 bg-emerald-50/40 p-2 text-left text-[12px] transition hover:border-emerald-300 hover:bg-emerald-50">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-slate-700">{h.name}</span>
+                        <span className="shrink-0 text-[11px] text-emerald-700">{h.d}km</span>
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-400">{h.sido} {h.sigungu} · {h.oper}{h.progN ? ` · 연 ${h.progN}개 운영` : ""}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 

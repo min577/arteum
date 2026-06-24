@@ -63,6 +63,11 @@ export default function KakaoMap() {
   const [evLoading, setEvLoading] = useState(false);
   const [evFar, setEvFar] = useState(false);
   const [filterSido, setFilterSido] = useState("");
+  const [role, setRole] = useState("supply"); // supply | seeker | demand
+  const [seekTarget, setSeekTarget] = useState("");
+  const [seekAdvice, setSeekAdvice] = useState(null);
+  const [seekLoading, setSeekLoading] = useState(false);
+  const [appeals, setAppeals] = useState({});
   const [tourOpen, setTourOpen] = useState(false);
 
   // 온보딩: 새로고침마다 1회 실행(세션 단위), 닫으면 그 세션 동안 재실행 안 함
@@ -279,6 +284,7 @@ export default function KakaoMap() {
   };
 
   useEffect(() => { if (sel) setFilterSido(sel.sido); }, [sel?.code]);
+  useEffect(() => { setSeekAdvice(null); }, [sel?.code, seekTarget]);
 
   // 지역 선택(시도→시군구) 인덱스
   const SIDO_ORDER = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"];
@@ -289,6 +295,36 @@ export default function KakaoMap() {
   const goRegion = (p) => {
     setSel({ ...p });
     if (mapRef.current && window.kakao) { mapRef.current.setLevel(10); mapRef.current.panTo(new window.kakao.maps.LatLng(p.cy, p.cx)); }
+  };
+
+  // 구직자: 선택 대상의 공급이 적은(수요 높은) 지역 랭킹
+  const seekRanked = (role === "seeker" && seekTarget && geo)
+    ? geo.features.map((f) => f.properties).sort((a, b) => (a[seekTarget] || 0) - (b[seekTarget] || 0) || a.total - b.total).slice(0, 10)
+    : [];
+  const askSeekAdvice = async () => {
+    if (!sel || !seekTarget) return;
+    setSeekLoading(true);
+    try {
+      const cur = sel[seekTarget] || 0;
+      const need = diag ? (diag.need.find((n) => n.t === seekTarget)?.need ?? 0) : 0;
+      const res = await fetch("/api/suggest", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sido: sel.sido, sigungu: sel.name, target: seekTarget, nearby: [], demand: events.length, far: evFar, need, cur }) });
+      setSeekAdvice(await res.json());
+    } catch (e) { setSeekAdvice({ error: String(e) }); }
+    setSeekLoading(false);
+  };
+  const doAppeal = (t) => {
+    if (!sel) return;
+    const k = `appeal_${sel.code}_${t}`;
+    let n = 0; try { n = parseInt(localStorage.getItem(k) || "0", 10); } catch {}
+    n += 1; try { localStorage.setItem(k, String(n)); } catch {}
+    setAppeals((a) => ({ ...a, [k]: n }));
+  };
+  const getAppeal = (t) => {
+    if (!sel) return 0;
+    const k = `appeal_${sel.code}_${t}`;
+    if (appeals[k] != null) return appeals[k];
+    try { return parseInt(localStorage.getItem(k) || "0", 10); } catch { return 0; }
   };
 
   const gapCount = geo ? geo.features.filter((f) => (target === "전체" ? f.properties.total : f.properties[target] || 0) === 0).length : 0;
@@ -308,6 +344,11 @@ export default function KakaoMap() {
           </div>
           <p className="mt-0.5 text-[12px] leading-snug text-slate-500">문화예술교육 수요·공급·인력 연결 지도</p>
           <span className="mt-1.5 inline-block rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700 ring-1 ring-teal-600/15">ARTE 공공데이터 기반</span>
+          <div className="mt-2.5 flex gap-1 rounded-xl bg-slate-100 p-1">
+            {[["supply", "🏛 공급자"], ["seeker", "🧑‍🎨 구직자"], ["demand", "🙋 수요자"]].map(([r, label]) => (
+              <button key={r} onClick={() => setRole(r)} className={`flex-1 rounded-lg px-1.5 py-1.5 text-[12px] font-bold transition ${role === r ? "bg-white text-teal-700 shadow" : "text-slate-500 hover:text-slate-700"}`}>{label}</button>
+            ))}
+          </div>
         </div>
 
         <div className="rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
@@ -385,7 +426,7 @@ export default function KakaoMap() {
       </div>
 
       {/* ── 우측: 상세 패널 ── */}
-      {sel && (
+      {sel && role === "supply" && (
         <div className="absolute right-4 top-4 z-10 flex max-h-[calc(100vh-2rem)] w-[23rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div>
@@ -600,9 +641,109 @@ export default function KakaoMap() {
         </div>
       )}
 
-      {!sel && ready && (
+      {/* 구직자 모드 */}
+      {role === "seeker" && (
+        <div className="absolute right-4 top-4 z-10 flex max-h-[calc(100vh-2rem)] w-[23rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <div className="text-xl font-extrabold text-slate-900">🧑‍🎨 구직 예술가 모드</div>
+            <p className="mt-0.5 text-[12px] text-slate-500">가르치고 싶은 대상을 고르면, 그 분야가 부족한(수요 높은) 지역을 추천해요.</p>
+          </div>
+          <div className="eum-scroll flex-1 overflow-y-auto px-5 py-4">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">어떤 대상을 가르치나요?</div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {TGT.map((t) => (
+                <button key={t} onClick={() => { setSeekTarget(t); setSeekAdvice(null); }} className={`rounded-full px-3 py-1 text-[13px] font-semibold ${seekTarget === t ? "bg-teal-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-teal-50"}`}>{t}</button>
+              ))}
+            </div>
+            {!seekTarget ? (
+              <p className="mt-4 rounded-xl bg-slate-50 p-3 text-[12px] text-slate-500">대상을 선택하면 수요 높은 지역이 나와요.</p>
+            ) : (
+              <>
+                <div className="mt-4 text-[13px] font-extrabold text-teal-700">📍 ‘{seekTarget}’ 강사 수요 높은 지역 TOP</div>
+                <p className="mb-1.5 text-[11px] text-slate-500">공급이 적을수록 진입 기회가 큰 곳이에요. 클릭하면 지도로 이동.</p>
+                <div className="space-y-1.5">
+                  {seekRanked.map((p, i) => (
+                    <button key={p.code} onClick={() => goRegion(p)} className="flex w-full items-center justify-between rounded-lg border border-slate-100 p-2 text-left text-[12px] transition hover:border-teal-300 hover:bg-teal-50/40">
+                      <span className="font-semibold text-slate-700">{i + 1}. {p.sido} {p.name}</span>
+                      <span className={(p[seekTarget] || 0) === 0 ? "font-bold text-[#E4572E]" : "text-slate-500"}>{seekTarget} {p[seekTarget] || 0}건</span>
+                    </button>
+                  ))}
+                </div>
+                {sel ? (
+                  <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/60 p-3">
+                    <div className="text-[13px] font-extrabold text-violet-800">🎯 {sel.name} · {seekTarget} 준비 가이드</div>
+                    {!seekAdvice && (
+                      <button onClick={askSeekAdvice} disabled={seekLoading} className="mt-2 w-full rounded-lg bg-violet-600 px-2 py-1.5 text-[12px] font-bold text-white hover:bg-violet-700 disabled:opacity-60">{seekLoading ? "AI 분석 중…" : "✨ AI 준비 가이드 받기"}</button>
+                    )}
+                    {seekAdvice && !seekAdvice.error && (
+                      <div className="mt-2 text-[12px] text-slate-700">
+                        <div className="font-bold text-violet-800">예상 신설 프로그램: {seekAdvice.title}</div>
+                        <div className="mt-1.5 rounded-lg border border-blue-200 bg-blue-50 p-2">
+                          <div className="text-[11px] font-bold text-blue-700">🧑‍🏫 준비하면 좋은 역량</div>
+                          <ul className="mt-1 list-disc pl-4 text-[11px] text-slate-600">{(seekAdvice.competencies || []).map((c, i) => <li key={i}>{c}</li>)}</ul>
+                          <div className="mt-1 text-[11px] text-slate-600">📜 {seekAdvice.qualification}</div>
+                          {(() => { const tr = trainingFor(seekAdvice.field); return tr ? <div className="mt-1 text-[11px] text-slate-500">📊 ARTE ‘{tr.field}’ 연수 누적 {tr.count.toLocaleString()}건·평균 {tr.avgHours}시간</div> : null; })()}
+                        </div>
+                      </div>
+                    )}
+                    {seekAdvice?.error && <p className="mt-2 text-[11px] text-red-600">오류: {seekAdvice.error}</p>}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-[11px] text-slate-400">위 지역을 선택하면 그 지역 맞춤 준비 가이드를 받을 수 있어요.</p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 수요자 모드 */}
+      {sel && role === "demand" && (
+        <div className="absolute right-4 top-4 z-10 flex max-h-[calc(100vh-2rem)] w-[23rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <div><div className="text-[12px] text-slate-400">{sel.sido} · 우리 지역</div><div className="text-2xl font-extrabold text-slate-900">{sel.name}</div></div>
+            <button onClick={() => setSel(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+          </div>
+          <div className="eum-scroll flex-1 overflow-y-auto px-5 py-4">
+            <div className="rounded-xl bg-slate-50 p-3.5">
+              <div className="text-[13px] font-extrabold text-slate-700">📋 우리 동네 문화예술교육 성적표</div>
+              <div className="mt-2 grid grid-cols-2 gap-1.5">
+                {TGT.map((t) => { const v = sel[t] || 0; return <div key={t} className={`flex justify-between rounded-lg px-2.5 py-1.5 text-[13px] ${v === 0 ? "bg-red-50" : "bg-white ring-1 ring-slate-100"}`}><span className="text-slate-600">{t}</span><span className={`font-bold ${v === 0 ? "text-red-500" : "text-slate-800"}`}>{v}</span></div>; })}
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="mb-1.5 text-[13px] font-extrabold text-slate-700">🙋 필요한 교육 수요 알리기</div>
+              <p className="mb-2 text-[11px] text-slate-500">부족한 대상의 교육이 필요하면 ‘수요 알리기’로 ARTE에 신호를 보내세요.</p>
+              <div className="space-y-1.5">
+                {(diag ? diag.top : []).slice(0, 5).map((x) => (
+                  <div key={x.t} className="flex items-center justify-between rounded-lg border border-slate-100 p-2 text-[12px]">
+                    <span className={x.cur === 0 ? "font-semibold text-[#E4572E]" : "text-slate-700"}>{x.t} {x.cur}건 <span className="text-slate-400">(평균 {x.avg.toFixed(1)})</span></span>
+                    <button onClick={() => doAppeal(x.t)} className="rounded-full bg-teal-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-teal-700">수요 알리기 👍 {getAppeal(x.t)}</button>
+                  </div>
+                ))}
+                {(!diag || diag.top.length === 0) && <p className="text-[12px] text-slate-500">이 지역은 전 대상 공급이 양호해요.</p>}
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="mb-1.5 text-[13px] font-extrabold text-pink-600">🎭 지금 우리 지역 문화행사</div>
+              {evLoading ? <p className="text-[12px] text-slate-400">…</p> : events.length === 0 ? <p className="rounded-xl bg-slate-50 p-3 text-[12px] text-slate-500">인근 행사 정보 없음.</p> : (
+                <div className="space-y-1.5">
+                  {events.slice(0, 6).map((e, i) => (
+                    <div key={i} onClick={() => showEventInfo(e)} className="cursor-pointer rounded-lg border border-pink-100 bg-pink-50/40 p-2 text-[12px] hover:bg-pink-50">
+                      <div className="font-semibold text-slate-800">{e.name}</div>
+                      <div className="text-[11px] text-slate-400">📅 {e.start}~{e.end} · {e.d}km</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!sel && ready && role !== "seeker" && (
         <div className="pointer-events-none absolute bottom-6 left-1/2 z-10 -translate-x-1/2 rounded-full bg-slate-900/80 px-4 py-2 text-[13px] font-medium text-white shadow-lg backdrop-blur">
-          지역을 클릭해 공급 현황·연계·AI 제안을 확인하세요
+          {role === "demand" ? "내 지역을 클릭해 성적표·수요 알리기를 확인하세요" : "지역을 클릭해 공급 현황·연계·AI 제안을 확인하세요"}
         </div>
       )}
 

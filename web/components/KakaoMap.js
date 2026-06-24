@@ -354,7 +354,7 @@ export default function KakaoMap() {
           <p className="mt-0.5 text-[12px] leading-snug text-slate-500">문화예술교육 수요·공급·인력 연결 지도</p>
           <span className="mt-1.5 inline-block rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700 ring-1 ring-teal-600/15">ARTE 공공데이터 기반</span>
           <div className="mt-2.5 flex gap-1 rounded-xl bg-slate-100 p-1">
-            {[["supply", "🏛 공급자"], ["seeker", "🧑‍🎨 구직자"], ["demand", "🙋 수요자"]].map(([r, label]) => (
+            {[["supply", "🏛 기관"], ["seeker", "🧑‍🎨 예술강사"], ["demand", "🙋 주민"]].map(([r, label]) => (
               <button key={r} onClick={() => setRole(r)} className={`flex-1 rounded-lg px-1.5 py-1.5 text-[12px] font-bold transition ${role === r ? "bg-white text-teal-700 shadow" : "text-slate-500 hover:text-slate-700"}`}>{label}</button>
             ))}
           </div>
@@ -654,8 +654,8 @@ export default function KakaoMap() {
       {role === "seeker" && (
         <div className="absolute right-4 top-4 z-10 flex max-h-[calc(100vh-2rem)] w-[23rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10">
           <div className="border-b border-slate-100 px-5 py-4">
-            <div className="text-xl font-extrabold text-slate-900">🧑‍🎨 구직 예술가 모드</div>
-            <p className="mt-0.5 text-[12px] text-slate-500">가르치고 싶은 대상을 고르면, 그 분야가 부족한(수요 높은) 지역을 추천해요.</p>
+            <div className="text-xl font-extrabold text-slate-900">🧑‍🎨 예술강사 모드</div>
+            <p className="mt-0.5 text-[12px] text-slate-500">가르치고 싶은 대상을 고르면, 그 분야가 부족해 진입 기회가 큰 지역을 추천해요.</p>
           </div>
           <div className="eum-scroll flex-1 overflow-y-auto px-5 py-4">
             <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">어떤 대상을 가르치나요?</div>

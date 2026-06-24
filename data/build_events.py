@@ -54,7 +54,7 @@ for pg in range(1, 11):
         if lat is None or lon is None or (x.get("eventEndDate") or "") < TODAY: continue
         addr = x.get("rdnmadr") or x.get("lnmadr") or ""
         events.append({"name": x.get("eventNm", ""), "field": x.get("eventCo", ""), "place": x.get("opar", ""),
-                       "addr": addr, "sido": sido_of(addr), "start": x.get("eventStartDate", ""),
+                       "thumb": "", "addr": addr, "sido": sido_of(addr), "start": x.get("eventStartDate", ""),
                        "end": x.get("eventEndDate", ""), "charge": x.get("chrgeInfo", ""), "org": x.get("mnnstNm", ""),
                        "url": x.get("homepageUrl", ""), "lat": lat, "lon": lon, "src": "표준데이터"})
 print(f"표준데이터 현재행사: {len(events)}")
@@ -83,7 +83,8 @@ for pg in range(1, 6):
         if lat is None or lon is None or end < TODAY: continue
         addr = xt(b, ["addr"])
         events.append({"name": xt(b, ["title", "eventNm"]), "field": xt(b, ["realmName", "realm"]),
-                       "place": xt(b, ["place", "spatial"]), "addr": addr, "sido": sido_of(addr) or sido_of(xt(b, ["place", "spatial"])),
+                       "place": xt(b, ["place", "spatial"]), "thumb": (xt(b, ["thumbnail", "imageObject"]) or "").replace("http://", "https://"),
+                       "addr": addr, "sido": sido_of(addr) or sido_of(xt(b, ["place", "spatial"])),
                        "start": fmt(xt(b, ["startDate", "eventStartDate"])), "end": end,
                        "charge": xt(b, ["charge", "price"]), "org": xt(b, ["place"]), "url": xt(b, ["url"]),
                        "lat": lat, "lon": lon, "src": "한눈에보는"})

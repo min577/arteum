@@ -60,10 +60,13 @@ export default function SeekerExplore({ trend, events, jobs, onFindRegion }) {
             <div className="mb-2 text-[12px] text-slate-400">{evFiltered.length}건{evSido ? ` · ${evSido}` : ""}</div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {evFiltered.slice(0, 30).map((e, i) => (
-                <a key={i} href={e.url || undefined} target={e.url ? "_blank" : undefined} rel="noreferrer" className={`block rounded-lg border border-slate-100 p-3 ${e.url ? "hover:border-teal-300" : ""}`}>
-                  <div className="text-[13px] font-semibold text-slate-800">{e.name}</div>
-                  <div className="mt-0.5 text-[12px] text-slate-400">{e.sido || ""} {e.field ? `· ${e.field}` : ""} · {e.place || e.addr || ""}</div>
-                  <div className="text-[12px] text-slate-400">{e.start} ~ {e.end}</div>
+                <a key={i} href={e.url || undefined} target={e.url ? "_blank" : undefined} rel="noreferrer" className={`block overflow-hidden rounded-lg border border-slate-100 ${e.url ? "hover:border-teal-300" : ""}`}>
+                  {e.thumb && <img src={e.thumb} alt="" loading="lazy" className="h-32 w-full bg-slate-100 object-cover" onError={(ev) => { ev.currentTarget.style.display = "none"; }} />}
+                  <div className="p-3">
+                    <div className="text-[13px] font-semibold text-slate-800">{e.name}</div>
+                    <div className="mt-0.5 text-[12px] text-slate-400">{e.sido || ""} {e.field ? `· ${e.field}` : ""} · {e.place || e.addr || ""}</div>
+                    <div className="text-[12px] text-slate-400">{e.start} ~ {e.end}</div>
+                  </div>
                 </a>
               ))}
             </div>

@@ -5,10 +5,13 @@ const SIDO = ["서울", "부산", "대구", "인천", "광주", "대전", "울�
 
 function EventCard({ e }) {
   return (
-    <a href={e.url || undefined} target={e.url ? "_blank" : undefined} rel="noreferrer" className={`block rounded-lg border border-slate-100 p-3 ${e.url ? "hover:border-teal-300" : ""}`}>
-      <div className="text-[13px] font-semibold text-slate-800">{e.name}</div>
-      <div className="mt-0.5 text-[12px] text-slate-400">{e.sido || ""} {e.field ? `· ${e.field}` : ""} · {e.place || e.addr || ""}</div>
-      <div className="text-[12px] text-slate-400">{e.start} ~ {e.end}{typeof e.d === "number" ? ` · ${e.d}km` : ""}</div>
+    <a href={e.url || undefined} target={e.url ? "_blank" : undefined} rel="noreferrer" className={`block overflow-hidden rounded-lg border border-slate-100 ${e.url ? "hover:border-teal-300" : ""}`}>
+      {e.thumb && <img src={e.thumb} alt="" loading="lazy" className="h-32 w-full bg-slate-100 object-cover" onError={(ev) => { ev.currentTarget.style.display = "none"; }} />}
+      <div className="p-3">
+        <div className="text-[13px] font-semibold text-slate-800">{e.name}</div>
+        <div className="mt-0.5 text-[12px] text-slate-400">{e.sido || ""} {e.field ? `· ${e.field}` : ""} · {e.place || e.addr || ""}</div>
+        <div className="text-[12px] text-slate-400">{e.start} ~ {e.end}{typeof e.d === "number" ? ` · ${e.d}km` : ""}</div>
+      </div>
     </a>
   );
 }

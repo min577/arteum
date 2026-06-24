@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Tour from "./Tour";
 import Trend from "./Trend";
 import Landing from "./Landing";
+import SeekerExplore from "./SeekerExplore";
 
 const TOUR_STEPS = [
   { sel: null, title: "이음(EUM)에 오신 걸 환영해요", body: "ARTE 공공데이터로 문화예술교육의 사각지대를 찾아, 공급주체·강사·AI 제안·현재 문화행사까지 한 화면에서 잇는 지도입니다." },
@@ -72,6 +73,8 @@ export default function KakaoMap() {
   const [filterSido, setFilterSido] = useState("");
   const [role, setRole] = useState("supply"); // supply | seeker | demand
   const [entered, setEntered] = useState(false);
+  const [seekerView, setSeekerView] = useState("explore"); // explore | map
+  const [nationalEvents, setNationalEvents] = useState([]);
   const [seekTarget, setSeekTarget] = useState("");
   const [seekAdvice, setSeekAdvice] = useState(null);
   const [seekLoading, setSeekLoading] = useState(false);
@@ -80,15 +83,15 @@ export default function KakaoMap() {
 
   // 온보딩: 랜딩에서 '기관'으로 진입 시 1회 자동 시작(세션 단위)
   const closeTour = () => setTourOpen(false);
-  const enter = (r) => { setRole(r); setEntered(true); if (r === "supply") setTimeout(() => setTourOpen(true), 350); };
+  const enter = (r) => { setRole(r); setEntered(true); if (r === "seeker") setSeekerView("explore"); if (r === "supply") setTimeout(() => setTourOpen(true), 350); };
   const [tour2Open, setTour2Open] = useState(false);
   const tour2ShownRef = useRef(false);
   useEffect(() => {
-    if (!sel || tourOpen || tour2ShownRef.current) return;
+    if (!sel || tourOpen || tour2ShownRef.current || role !== "supply") return;
     tour2ShownRef.current = true;
     const t = setTimeout(() => setTour2Open(true), 400);
     return () => clearTimeout(t);
-  }, [sel?.code, tourOpen]);
+  }, [sel?.code, tourOpen, role]);
   const closeTour2 = () => setTour2Open(false);
 
   useEffect(() => {
@@ -113,6 +116,7 @@ export default function KakaoMap() {
     fetch("/viewTrend.json").then((r) => r.json()).then(setViewTrend).catch(() => {});
     fetch("/popByCode.json").then((r) => r.json()).then(setPopData).catch(() => {});
     fetch("/demand.json").then((r) => r.json()).then(setDemand).catch(() => {});
+    fetch("/api/events").then((r) => r.json()).then((d) => setNationalEvents(d.events || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -375,6 +379,7 @@ export default function KakaoMap() {
       <div className="absolute left-4 top-4 z-10 w-[19rem] space-y-2.5">
         <div className="relative rounded-2xl bg-white/95 px-5 py-3.5 shadow-lg ring-1 ring-slate-900/10 backdrop-blur">
           <button onClick={() => setTourOpen(true)} title="사용 안내" className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[13px] font-bold text-slate-500 transition hover:bg-teal-100 hover:text-teal-700">?</button>
+          <button onClick={() => setEntered(false)} title="역할 선택으로" className="absolute right-10 top-3 flex h-6 items-center justify-center rounded-full bg-slate-100 px-2 text-[11px] font-semibold text-slate-500 transition hover:bg-teal-100 hover:text-teal-700">← 역할</button>
           <div className="flex items-baseline gap-2">
             <h1 className="text-xl font-extrabold tracking-tight text-slate-900">이음</h1>
             <span className="text-sm font-bold text-teal-600">EUM</span>
@@ -719,11 +724,11 @@ export default function KakaoMap() {
       )}
 
       {/* 구직자 모드 */}
-      {role === "seeker" && (
-        <div className="absolute right-4 top-4 z-10 flex max-h-[calc(100vh-2rem)] w-[23rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10">
+      {role === "seeker" && seekerView === "map" && (
+        <div className="absolute right-4 top-16 z-10 flex max-h-[calc(100vh-5rem)] w-[23rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10">
           <div className="border-b border-slate-100 px-5 py-4">
-            <div className="text-xl font-extrabold text-slate-900">🧑‍🎨 예술강사 모드</div>
-            <p className="mt-0.5 text-[12px] text-slate-500">가르치고 싶은 대상을 고르면, 그 분야가 부족해 진입 기회가 큰 지역을 추천해요.</p>
+            <div className="text-lg font-extrabold text-slate-900">진입 기회 지역 찾기</div>
+            <p className="mt-0.5 text-[12px] text-slate-500">가르치고 싶은 대상을 고르면, 그 분야가 비어 진입 기회가 큰 지역을 추천해요.</p>
           </div>
           <div className="eum-scroll flex-1 overflow-y-auto px-5 py-4">
             <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">어떤 대상을 가르치나요?</div>
@@ -733,10 +738,10 @@ export default function KakaoMap() {
               ))}
             </div>
             {!seekTarget ? (
-              <p className="mt-4 rounded-xl bg-slate-50 p-3 text-[12px] text-slate-500">대상을 선택하면 수요 높은 지역이 나와요.</p>
+              <p className="mt-4 rounded-xl bg-slate-50 p-3 text-[12px] text-slate-500">대상을 선택하면 진입 기회 지역이 나와요.</p>
             ) : (
               <>
-                <div className="mt-4 text-[13px] font-extrabold text-teal-700">📍 ‘{seekTarget}’ 진입 기회 지역 TOP</div>
+                <div className="mt-4 text-[13px] font-extrabold text-teal-700">‘{seekTarget}’ 진입 기회 지역</div>
                 <p className="mb-1.5 text-[11px] leading-snug text-slate-500">다른 대상은 운영하는데 <b>{seekTarget}</b>만 빠진 = 채우면 바로 자리가 나는 명확한 공백 지역. 클릭하면 지도로 이동.</p>
                 <div className="space-y-1.5">
                   {seekRanked.map((p, i) => {
@@ -756,18 +761,18 @@ export default function KakaoMap() {
                 </div>
                 {sel ? (
                   <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/60 p-3">
-                    <div className="text-[13px] font-extrabold text-violet-800">🎯 {sel.name} · {seekTarget} 준비 가이드</div>
+                    <div className="text-[13px] font-extrabold text-violet-800">{sel.name} · {seekTarget} 준비 가이드</div>
                     {!seekAdvice && (
-                      <button onClick={askSeekAdvice} disabled={seekLoading} className="mt-2 w-full rounded-lg bg-violet-600 px-2 py-1.5 text-[12px] font-bold text-white hover:bg-violet-700 disabled:opacity-60">{seekLoading ? "AI 분석 중…" : "✨ AI 준비 가이드 받기"}</button>
+                      <button onClick={askSeekAdvice} disabled={seekLoading} className="mt-2 w-full rounded-lg bg-violet-600 px-2 py-1.5 text-[12px] font-bold text-white hover:bg-violet-700 disabled:opacity-60">{seekLoading ? "AI 분석 중…" : "AI 준비 가이드 받기"}</button>
                     )}
                     {seekAdvice && !seekAdvice.error && (
                       <div className="mt-2 text-[12px] text-slate-700">
                         <div className="font-bold text-violet-800">예상 신설 프로그램: {seekAdvice.title}</div>
                         <div className="mt-1.5 rounded-lg border border-blue-200 bg-blue-50 p-2">
-                          <div className="text-[11px] font-bold text-blue-700">🧑‍🏫 준비하면 좋은 역량</div>
+                          <div className="text-[11px] font-bold text-blue-700">준비하면 좋은 역량</div>
                           <ul className="mt-1 list-disc pl-4 text-[11px] text-slate-600">{(seekAdvice.competencies || []).map((c, i) => <li key={i}>{c}</li>)}</ul>
-                          <div className="mt-1 text-[11px] text-slate-600">📜 {seekAdvice.qualification}</div>
-                          {(() => { const tr = trainingFor(seekAdvice.field); return tr ? <div className="mt-1 text-[11px] text-slate-500">📊 ARTE ‘{tr.field}’ 연수 누적 {tr.count.toLocaleString()}건·평균 {tr.avgHours}시간</div> : null; })()}
+                          <div className="mt-1 text-[11px] text-slate-600">권장 자격: {seekAdvice.qualification}</div>
+                          {(() => { const tr = trainingFor(seekAdvice.field); return tr ? <div className="mt-1 text-[11px] text-slate-500">ARTE ‘{tr.field}’ 연수 누적 {tr.count.toLocaleString()}건·평균 {tr.avgHours}시간</div> : null; })()}
                         </div>
                       </div>
                     )}
@@ -777,44 +782,6 @@ export default function KakaoMap() {
                   <p className="mt-3 text-[11px] text-slate-400">위 지역을 선택하면 그 지역 맞춤 준비 가이드를 받을 수 있어요.</p>
                 )}
               </>
-            )}
-
-            {/* 문화예술 관람 수요 추이 */}
-            {viewTrend && (
-              <div className="mt-4 border-t border-slate-100 pt-3">
-                <div className="mb-1.5 text-[13px] font-extrabold text-purple-700">📈 분야별 관람 수요 추이 (1년)</div>
-                <p className="mb-2 text-[11px] leading-snug text-slate-500">관람 수요가 오르는 분야를 미리 준비하면 유리해요.</p>
-                <Trend data={viewTrend} />
-              </div>
-            )}
-
-            {/* 실제 예술강사 채용 사례 (ARKO) */}
-            {artJobs && (
-              <div className="mt-4 border-t border-slate-100 pt-3">
-                <div className="text-[13px] font-extrabold text-amber-700">💼 실제 예술강사 채용 사례</div>
-                <div className="mt-1.5 rounded-lg bg-amber-50 p-2 text-[11px] leading-snug text-amber-800">
-                  문화예술 채용의 <b>{artJobs.stat.metroShare}%가 수도권 집중</b> (ARKO {artJobs.stat.withRegion.toLocaleString()}건 분석). 지방 강사 일자리는 위 공백 지역 신설로 만들어야 해요.
-                </div>
-                {(() => {
-                  const local = sel ? artJobs.jobs.filter((j) => j.sido === sel.sido) : [];
-                  const show = (local.length ? local : artJobs.jobs).slice(0, 6);
-                  return (
-                    <>
-                      <p className="mb-1.5 mt-2 text-[11px] text-slate-400">{sel && local.length ? `${sel.sido} 채용 사례` : "전국 채용 사례"} · 과거 공고 — 요구 역량 참고용</p>
-                      <div className="space-y-1.5">
-                        {show.map((j, i) => (
-                          <div key={i} className="rounded-lg border border-slate-100 p-2 text-[12px]">
-                            <div className="font-semibold text-slate-700">{j.title}</div>
-                            <div className="mt-0.5 text-[11px] text-slate-400">🏢 {j.org || "기관"} · {j.area || j.sido || "지역미상"}{j.clos ? ` · ~${j.clos}` : ""}</div>
-                            {j.req && <div className="mt-0.5 text-[11px] leading-snug text-slate-500">📋 {j.req}</div>}
-                            {j.url && <a href={j.url} target="_blank" rel="noreferrer" className="mt-0.5 inline-block text-[11px] font-semibold text-blue-600 hover:underline">🔗 공고 보기 →</a>}
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
             )}
           </div>
         </div>
@@ -871,6 +838,20 @@ export default function KakaoMap() {
       )}
 
       {err && <div className="absolute inset-x-0 top-1/2 z-20 mx-auto w-fit rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow-lg">{err}</div>}
+
+      {role === "seeker" && entered && (
+        <div className="fixed left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full bg-white/95 px-1.5 py-1.5 shadow-lg ring-1 ring-slate-900/10">
+          <button onClick={() => setEntered(false)} className="rounded-full px-2.5 py-1 text-[12px] font-semibold text-slate-500 hover:bg-slate-100">← 역할</button>
+          <div className="h-4 w-px bg-slate-200" />
+          {[["explore", "탐색"], ["map", "기회 지도"]].map(([v, label]) => (
+            <button key={v} onClick={() => setSeekerView(v)} className={`rounded-full px-3 py-1 text-[12px] font-bold transition ${seekerView === v ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100"}`}>{label}</button>
+          ))}
+        </div>
+      )}
+
+      {role === "seeker" && seekerView === "explore" && (
+        <SeekerExplore trend={viewTrend} events={nationalEvents} jobs={artJobs} onFindRegion={() => setSeekerView("map")} />
+      )}
 
       {!entered && <Landing onEnter={enter} demand={demand} gapCount={gapCount} />}
 

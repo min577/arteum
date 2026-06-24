@@ -18,13 +18,7 @@ const ROLES = [
   { key: "demand", title: "주민", sub: "문화예술교육 수요자", desc: "우리 동네 문화예술교육 현황을 보고, 부족한 교육의 수요를 직접 알립니다." },
 ];
 
-export default function Landing({ onEnter, demand, gapCount }) {
-  const ratio = demand?.urbanExp ? (demand.urbanExp["대도시"] / demand.urbanExp["읍면지역"]).toFixed(1) : null;
-  const stats = [
-    { v: gapCount != null ? `${gapCount}곳` : "60곳", l: "전 대상 프로그램 0건 시군구" },
-    { v: demand?.urbanExp ? `${demand.urbanExp["읍면지역"]}%` : "3.1%", l: `읍면 교육경험률 (대도시의 1/${ratio || "2.5"})` },
-    { v: "12종", l: "활용 공공데이터셋" },
-  ];
+export default function Landing({ onEnter }) {
   return (
     <div className="fixed inset-0 z-[900] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-teal-900" style={{ fontFamily: "Pretendard, sans-serif" }}>
       <div className="mx-auto flex min-h-full max-w-5xl flex-col justify-center px-6 py-12">
@@ -34,16 +28,7 @@ export default function Landing({ onEnter, demand, gapCount }) {
           <p className="mt-3 text-lg text-slate-300">문화예술교육의 <b className="font-semibold text-white">수요·공급·인력</b>을 잇는 지도</p>
         </div>
 
-        <div className="mx-auto mt-8 grid max-w-2xl grid-cols-1 gap-px overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10 sm:grid-cols-3">
-          {stats.map((s, i) => (
-            <div key={i} className="bg-slate-900/40 p-4 text-center backdrop-blur">
-              <div className="text-3xl font-extrabold tracking-tight text-teal-300">{s.v}</div>
-              <div className="mt-1 text-[12px] leading-snug text-slate-300">{s.l}</div>
-            </div>
-          ))}
-        </div>
-
-        <p className="mt-10 text-center text-[12px] font-medium uppercase tracking-[0.2em] text-slate-400">어떤 입장에서 보시나요</p>
+        <p className="mt-12 text-center text-[12px] font-medium uppercase tracking-[0.2em] text-slate-400">어떤 입장에서 보시나요</p>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           {ROLES.map((r) => (
             <button key={r.key} onClick={() => onEnter(r.key)}

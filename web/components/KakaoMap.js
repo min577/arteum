@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Tour from "./Tour";
 import Trend from "./Trend";
+import Landing from "./Landing";
 
 const TOUR_STEPS = [
   { sel: null, title: "이음(EUM)에 오신 걸 환영해요", body: "ARTE 공공데이터로 문화예술교육의 사각지대를 찾아, 공급주체·강사·AI 제안·현재 문화행사까지 한 화면에서 잇는 지도입니다." },
@@ -70,15 +71,16 @@ export default function KakaoMap() {
   const [evFar, setEvFar] = useState(false);
   const [filterSido, setFilterSido] = useState("");
   const [role, setRole] = useState("supply"); // supply | seeker | demand
+  const [entered, setEntered] = useState(false);
   const [seekTarget, setSeekTarget] = useState("");
   const [seekAdvice, setSeekAdvice] = useState(null);
   const [seekLoading, setSeekLoading] = useState(false);
   const [appeals, setAppeals] = useState({});
   const [tourOpen, setTourOpen] = useState(false);
 
-  // 온보딩: 새로고침마다 1회 실행(세션 단위), 닫으면 그 세션 동안 재실행 안 함
-  useEffect(() => { setTourOpen(true); }, []);
+  // 온보딩: 랜딩에서 '기관'으로 진입 시 1회 자동 시작(세션 단위)
   const closeTour = () => setTourOpen(false);
+  const enter = (r) => { setRole(r); setEntered(true); if (r === "supply") setTimeout(() => setTourOpen(true), 350); };
   const [tour2Open, setTour2Open] = useState(false);
   const tour2ShownRef = useRef(false);
   useEffect(() => {
@@ -869,6 +871,8 @@ export default function KakaoMap() {
       )}
 
       {err && <div className="absolute inset-x-0 top-1/2 z-20 mx-auto w-fit rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow-lg">{err}</div>}
+
+      {!entered && <Landing onEnter={enter} demand={demand} gapCount={gapCount} />}
 
       <Tour steps={TOUR_STEPS} open={tourOpen} onClose={closeTour} />
       <Tour steps={TOUR2_STEPS} open={tour2Open} onClose={closeTour2} />

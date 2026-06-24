@@ -77,7 +77,17 @@ for r in rows[2:]:
     c1 = r[0].strip()
     if c1 == "지역규모별": urbanExp[r[1].strip()] = num(r[3])      # 있다(경험률 %)
     elif c1 == "17개 시도별": expBySido[r[1].strip()] = num(r[3])
-demand = {"urbanExp": urbanExp, "expBySido": expBySido, "per10kNational": out["per10kNational"]}
+# 시도별 등록 장애인 인구 (장애인 사각지대 근거)
+disabledBySido = {}
+try:
+    drows = list(csv.reader(io.StringIO(open(os.path.join(r"C:\Users\김민우\Desktop\공모전", "연령_및_성별_장애인_인구__시군구_20260624170400.csv"), "rb").read().decode("cp949", "replace"))))
+    for r in drows[2:]:
+        if len(r) >= 3 and r[0].strip() in SIDO_FULL and r[1].strip() == "합계":
+            disabledBySido[SIDO_FULL[r[0].strip()]] = int(num(r[2]) or 0)
+except Exception as e:
+    print("장애인 파싱 오류", e)
+
+demand = {"urbanExp": urbanExp, "expBySido": expBySido, "disabledBySido": disabledBySido, "per10kNational": out["per10kNational"]}
 json.dump(demand, open(os.path.join(WEB, "demand.json"), "w", encoding="utf-8"), ensure_ascii=False)
 print("\ndemand.json | 지역규모 경험률:", urbanExp)
 print("  시도별 경험률 일부:", dict(list(expBySido.items())[:5]))

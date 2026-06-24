@@ -501,6 +501,9 @@ export default function KakaoMap() {
                     {sidoExp != null && <span className="text-slate-400"><br/>{sel.sido} 문화예술교육 경험률 {sidoExp}%</span>}
                   </div>
                 )}
+                {demand?.disabledBySido?.[sel.sido] != null && (sel["장애인"] || 0) === 0 && (
+                  <div className="mt-1 text-[11px] font-semibold text-[#E4572E]">♿ {sel.sido} 등록 장애인 {demand.disabledBySido[sel.sido].toLocaleString()}명인데 장애인 프로그램 0건</div>
+                )}
                 <div className="mt-2 text-[12px] text-slate-700">
                   <b>교육 공급 부족</b> <span className="text-slate-400">(전국평균 대비)</span>
                   <div className="mt-1 space-y-0.5">

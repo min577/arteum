@@ -382,13 +382,13 @@ export default function KakaoMap() {
           <p className="mt-0.5 text-[12px] leading-snug text-slate-500">문화예술교육 수요·공급·인력 연결 지도</p>
           <span className="mt-1.5 inline-block rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700 ring-1 ring-teal-600/15">ARTE 공공데이터 기반</span>
           <div className="mt-2.5 flex gap-1 rounded-xl bg-slate-100 p-1">
-            {[["supply", "🏛 기관"], ["seeker", "🧑‍🎨 예술강사"], ["demand", "🙋 주민"]].map(([r, label]) => (
+            {[["supply", "기관"], ["seeker", "예술강사"], ["demand", "주민"]].map(([r, label]) => (
               <button key={r} onClick={() => setRole(r)} className={`flex-1 rounded-lg px-1.5 py-1.5 text-[12px] font-bold transition ${role === r ? "bg-white text-teal-700 shadow" : "text-slate-500 hover:text-slate-700"}`}>{label}</button>
             ))}
           </div>
           {demand?.urbanExp?.["읍면지역"] && (
             <div className="mt-2 rounded-lg bg-red-50 px-2 py-1 text-[10px] font-semibold leading-snug text-red-700">
-              📊 읍면 문화예술교육 경험률 {demand.urbanExp["읍면지역"]}% = 대도시({demand.urbanExp["대도시"]}%)의 1/{(demand.urbanExp["대도시"] / demand.urbanExp["읍면지역"]).toFixed(1)} (국민문화예술활동조사)
+읍면 문화예술교육 경험률 {demand.urbanExp["읍면지역"]}% = 대도시({demand.urbanExp["대도시"]}%)의 1/{(demand.urbanExp["대도시"] / demand.urbanExp["읍면지역"]).toFixed(1)} · 국민문화예술활동조사
             </div>
           )}
         </div>

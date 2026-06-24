@@ -297,9 +297,15 @@ export default function KakaoMap() {
     if (mapRef.current && window.kakao) { mapRef.current.setLevel(10); mapRef.current.panTo(new window.kakao.maps.LatLng(p.cy, p.cx)); }
   };
 
-  // 구직자: 선택 대상의 공급이 적은(수요 높은) 지역 랭킹
+  // 구직자: '활동은 있는데(전체 프로그램 있음) 그 대상만 부족한' = 수요 대비 공백이 큰 지역
   const seekRanked = (role === "seeker" && seekTarget && geo)
-    ? geo.features.map((f) => f.properties).sort((a, b) => (a[seekTarget] || 0) - (b[seekTarget] || 0) || a.total - b.total).slice(0, 10)
+    ? (() => {
+        const props = geo.features.map((f) => f.properties);
+        const lacking = props.filter((p) => (p[seekTarget] || 0) < (avgByTarget[seekTarget] || 0.5));
+        const pool = lacking.length ? lacking : props;
+        // 전체 활동량(수요 proxy) 높은 순 → 같은 경우 대상 공급 적은 순
+        return pool.sort((a, b) => (b.total - a.total) || ((a[seekTarget] || 0) - (b[seekTarget] || 0))).slice(0, 10);
+      })()
     : [];
   const askSeekAdvice = async () => {
     if (!sel || !seekTarget) return;
@@ -660,12 +666,17 @@ export default function KakaoMap() {
             ) : (
               <>
                 <div className="mt-4 text-[13px] font-extrabold text-teal-700">📍 ‘{seekTarget}’ 강사 수요 높은 지역 TOP</div>
-                <p className="mb-1.5 text-[11px] text-slate-500">공급이 적을수록 진입 기회가 큰 곳이에요. 클릭하면 지도로 이동.</p>
+                <p className="mb-1.5 text-[11px] leading-snug text-slate-500">활동(전체 프로그램)은 있는데 <b>{seekTarget}</b> 공급이 적은 곳 = 수요 대비 공백이 커 진입 기회가 큰 지역. 클릭하면 지도로 이동.</p>
                 <div className="space-y-1.5">
                   {seekRanked.map((p, i) => (
-                    <button key={p.code} onClick={() => goRegion(p)} className="flex w-full items-center justify-between rounded-lg border border-slate-100 p-2 text-left text-[12px] transition hover:border-teal-300 hover:bg-teal-50/40">
-                      <span className="font-semibold text-slate-700">{i + 1}. {p.sido} {p.name}</span>
-                      <span className={(p[seekTarget] || 0) === 0 ? "font-bold text-[#E4572E]" : "text-slate-500"}>{seekTarget} {p[seekTarget] || 0}건</span>
+                    <button key={p.code} onClick={() => goRegion(p)} className="w-full rounded-lg border border-slate-100 p-2 text-left text-[12px] transition hover:border-teal-300 hover:bg-teal-50/40">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-slate-700">{i + 1}. {p.sido} {p.name}</span>
+                        {(p[seekTarget] || 0) === 0
+                          ? <span className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600">공백 · 기회↑</span>
+                          : <span className="shrink-0 text-[11px] text-slate-500">{seekTarget} {p[seekTarget]}건</span>}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-400">전체 프로그램 {p.total}건 · {seekTarget} {p[seekTarget] || 0}건</div>
                     </button>
                   ))}
                 </div>

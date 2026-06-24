@@ -24,6 +24,18 @@ def fin(v):
     try: return float(v)
     except: return None
 
+SIDO = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]
+def sido_of(addr):
+    a = (addr or "").strip()
+    for s in SIDO:
+        if a.startswith(s) or a.startswith(s[:2]): return s
+    m = {"강원특별자치도": "강원", "전북특별자치도": "전북", "충청북도": "충북", "충청남도": "충남",
+         "전라북도": "전북", "전라남도": "전남", "경상북도": "경북", "경상남도": "경남",
+         "제주특별자치도": "제주", "세종특별자치시": "세종"}
+    for k, v in m.items():
+        if a.startswith(k) or a.startswith(k[:2]): return v
+    return ""
+
 events = []
 
 # 1) 표준데이터 (순차 + 재시도)
@@ -40,8 +52,9 @@ for pg in range(1, 11):
     for x in items:
         lat, lon = fin(x.get("latitude")), fin(x.get("longitude"))
         if lat is None or lon is None or (x.get("eventEndDate") or "") < TODAY: continue
+        addr = x.get("rdnmadr") or x.get("lnmadr") or ""
         events.append({"name": x.get("eventNm", ""), "field": x.get("eventCo", ""), "place": x.get("opar", ""),
-                       "addr": x.get("rdnmadr") or x.get("lnmadr") or "", "start": x.get("eventStartDate", ""),
+                       "addr": addr, "sido": sido_of(addr), "start": x.get("eventStartDate", ""),
                        "end": x.get("eventEndDate", ""), "charge": x.get("chrgeInfo", ""), "org": x.get("mnnstNm", ""),
                        "url": x.get("homepageUrl", ""), "lat": lat, "lon": lon, "src": "표준데이터"})
 print(f"표준데이터 현재행사: {len(events)}")
@@ -68,8 +81,9 @@ for pg in range(1, 6):
         lat, lon = fin(xt(b, ["gpsY", "latitude"])), fin(xt(b, ["gpsX", "longitude"]))
         end = fmt(xt(b, ["endDate", "eventEndDate"]))
         if lat is None or lon is None or end < TODAY: continue
+        addr = xt(b, ["addr"])
         events.append({"name": xt(b, ["title", "eventNm"]), "field": xt(b, ["realmName", "realm"]),
-                       "place": xt(b, ["place", "spatial"]), "addr": xt(b, ["addr"]),
+                       "place": xt(b, ["place", "spatial"]), "addr": addr, "sido": sido_of(addr) or sido_of(xt(b, ["place", "spatial"])),
                        "start": fmt(xt(b, ["startDate", "eventStartDate"])), "end": end,
                        "charge": xt(b, ["charge", "price"]), "org": xt(b, ["place"]), "url": xt(b, ["url"]),
                        "lat": lat, "lon": lon, "src": "한눈에보는"})

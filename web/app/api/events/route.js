@@ -19,7 +19,8 @@ export async function GET(req) {
   // 스냅샷 중 아직 종료되지 않은 행사만 (현재성 유지)
   const events = (Array.isArray(EVENTS) ? EVENTS : []).filter((e) => (e.end || "") >= today);
   if (!(isFinite(cx) && isFinite(cy))) {
-    return Response.json({ count: events.length, total: events.length, far: false, events: events.slice(0, 15) });
+    const sorted = [...events].sort((a, b) => (a.start || "").localeCompare(b.start || ""));
+    return Response.json({ count: sorted.length, total: sorted.length, far: false, events: sorted });
   }
   const ranked = events.map((e) => ({ ...e, d: Math.round(dist(cy, cx, e.lat, e.lon)) })).sort((a, b) => a.d - b.d);
   const near = ranked.filter((e) => e.d <= 40).slice(0, 15);

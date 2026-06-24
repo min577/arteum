@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Tour from "./Tour";
+import Trend from "./Trend";
 
 const TOUR_STEPS = [
   { sel: null, title: "이음(EUM)에 오신 걸 환영해요", body: "ARTE 공공데이터로 문화예술교육의 사각지대를 찾아, 공급주체·강사·AI 제안·현재 문화행사까지 한 화면에서 잇는 지도입니다." },
@@ -54,6 +55,7 @@ export default function KakaoMap() {
   const [jobs, setJobs] = useState(null);
   const [artJobs, setArtJobs] = useState(null);
   const [facil, setFacil] = useState(null);
+  const [viewTrend, setViewTrend] = useState(null);
   const [target, setTarget] = useState("전체");
   const [sel, setSel] = useState(null);
   const [showJobs, setShowJobs] = useState(false);
@@ -104,6 +106,7 @@ export default function KakaoMap() {
     fetch("/jobs.json").then((r) => r.json()).then(setJobs).catch(() => {});
     fetch("/artJobs.json").then((r) => r.json()).then(setArtJobs).catch(() => {});
     fetch("/facilities.json").then((r) => r.json()).then(setFacil).catch(() => {});
+    fetch("/viewTrend.json").then((r) => r.json()).then(setViewTrend).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -751,6 +754,15 @@ export default function KakaoMap() {
                   <p className="mt-3 text-[11px] text-slate-400">위 지역을 선택하면 그 지역 맞춤 준비 가이드를 받을 수 있어요.</p>
                 )}
               </>
+            )}
+
+            {/* 문화예술 관람 수요 추이 */}
+            {viewTrend && (
+              <div className="mt-4 border-t border-slate-100 pt-3">
+                <div className="mb-1.5 text-[13px] font-extrabold text-purple-700">📈 분야별 관람 수요 추이 (1년)</div>
+                <p className="mb-2 text-[11px] leading-snug text-slate-500">관람 수요가 오르는 분야를 미리 준비하면 유리해요.</p>
+                <Trend data={viewTrend} />
+              </div>
             )}
 
             {/* 실제 예술강사 채용 사례 (ARKO) */}

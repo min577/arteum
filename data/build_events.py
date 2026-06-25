@@ -24,6 +24,14 @@ def fin(v):
     try: return float(v)
     except: return None
 
+def cleandate(s):
+    s = (s or "").strip()
+    m = re.fullmatch(r"(\d{4})(\d{2})(\d{2})", s) or re.match(r"(\d{4})[-.](\d{1,2})[-.](\d{1,2})", s)
+    if not m: return ""
+    y, mo, da = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    if not (2000 <= y <= 2035 and 1 <= mo <= 12 and 1 <= da <= 31): return ""
+    return f"{y:04d}-{mo:02d}-{da:02d}"
+
 SIDO = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]
 def sido_of(addr):
     a = (addr or "").strip()
@@ -54,8 +62,8 @@ for pg in range(1, 11):
         if lat is None or lon is None or (x.get("eventEndDate") or "") < TODAY: continue
         addr = x.get("rdnmadr") or x.get("lnmadr") or ""
         events.append({"name": x.get("eventNm", ""), "field": x.get("eventCo", ""), "place": x.get("opar", ""),
-                       "thumb": "", "addr": addr, "sido": sido_of(addr), "start": x.get("eventStartDate", ""),
-                       "end": x.get("eventEndDate", ""), "charge": x.get("chrgeInfo", ""), "org": x.get("mnnstNm", ""),
+                       "thumb": "", "addr": addr, "sido": sido_of(addr), "start": cleandate(x.get("eventStartDate", "")),
+                       "end": cleandate(x.get("eventEndDate", "")), "charge": x.get("chrgeInfo", ""), "org": x.get("mnnstNm", ""),
                        "url": x.get("homepageUrl", ""), "lat": lat, "lon": lon, "src": "표준데이터"})
 print(f"표준데이터 현재행사: {len(events)}")
 
@@ -65,7 +73,7 @@ def xt(b, names):
         m = re.search(rf"<{n}>([\s\S]*?)</{n}>", b, re.I)
         if m: return re.sub(r"<!\[CDATA\[|\]\]>", "", m.group(1)).strip()
     return ""
-def fmt(s): return f"{s[:4]}-{s[4:6]}-{s[6:8]}" if re.fullmatch(r"\d{8}", s) else s
+def fmt(s): return cleandate(s)
 to = (datetime.date.today() + datetime.timedelta(days=180)).strftime("%Y%m%d")
 b_cnt = 0
 for pg in range(1, 13):

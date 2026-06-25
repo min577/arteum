@@ -18,9 +18,11 @@ def to_sido(a):
 
 def normd(d):
     d = (d or "").strip()
-    if re.fullmatch(r"\d{8}", d): return f"{d[:4]}-{d[4:6]}-{d[6:8]}"
-    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", d)
-    return f"{m.group(1)}-{m.group(2)}-{m.group(3)}" if m else ""
+    m = re.fullmatch(r"(\d{4})(\d{2})(\d{2})", d) or re.match(r"(\d{4})[-.](\d{1,2})[-.](\d{1,2})", d)
+    if not m: return ""
+    y, mo, da = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    if not (2000 <= y <= 2035 and 1 <= mo <= 12 and 1 <= da <= 31): return ""  # 잘못된 날짜 제거
+    return f"{y:04d}-{mo:02d}-{da:02d}"
 
 def clean(t):
     t = re.sub(r"&#\d+;", " ", t or "")

@@ -27,13 +27,25 @@ def clean(t):
     t = re.sub(r"<[^>]+>", " ", t)
     return re.sub(r"\s+", " ", t).strip()
 
-def snippet(cn):
+BULLETS = "?○●◯▪◦◾◽■□ㆍ•·∙‣*◆◇▶"
+QUAL = ["전공", "자격증", "유자격", "자격 소지", "자격증 소지", "경력", "경험", "소지자", "학위", "졸업", "수료", "능통", "우대", "가능자", "지도사", "교육사", "이상 학력", "관련학과", "전문가"]
+SKIP = ["해당 되면", "지원가능", "아래", "택일", "접수", "기간", "심사", "발표", "폐강", "정원", "급여", "근로", "일정", "방법", "문의", "제출", "기타"]
+def reqlist(cn):
     cn = clean(cn)
-    for kw in ["모집분야", "지원자격", "자격요건", "응시자격", "자격"]:
-        i = cn.find(kw)
-        if i >= 0:
-            return cn[i:i + 90].strip()
-    return cn[:90]
+    parts = re.split(r"[" + re.escape(BULLETS) + r"]|\s\d+[\).]\s|[\n\r]+|\.\s|\s-\s|·", cn)
+    items, seen = [], set()
+    for p in parts:
+        p = p.strip(" ·,.　-()[]")
+        if not (5 <= len(p) <= 40): continue
+        if any(s in p for s in SKIP): continue
+        if not any(q in p for q in QUAL): continue
+        if not re.search(r"[가-힣A-Za-z)]$", p): continue  # 잘린 항목 제외
+        p = re.sub(r"\s[가-힣]$", "", p).strip()          # 끝의 가/나/다 마커 제거
+        if p.count("(") > p.count(")"): p += ")"
+        if p in seen: continue
+        seen.add(p); items.append(p)
+        if len(items) >= 3: break
+    return items
 
 # 수집 + 중복 제거
 seen, rows = set(), []
@@ -70,7 +82,7 @@ for r in rows:
         "area": clean(r.get("EMPMN_ACT_AREA_DC", "")),
         "clos": normd(r.get("CLOS_DE_DC", "")),
         "nmpr": clean(r.get("RCRIT_NMPR_DC", "")),
-        "req": snippet(r.get("EMPMN_CN", "")),
+        "reqs": reqlist(r.get("EMPMN_CN", "")),
         "url": (r.get("DETAIL_VIEW_URL") or r.get("HMPG_URL") or "").strip(),
     })
 jobs.sort(key=lambda j: j["clos"], reverse=True)  # 최신 마감 먼저

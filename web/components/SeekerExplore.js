@@ -95,10 +95,14 @@ export default function SeekerExplore({ trend, events, jobs, onFindRegion }) {
                     <span>{j.org || "기관"}</span>
                     {j.clos && <span className="text-slate-400">· 마감 ~{j.clos}</span>}
                   </div>
-                  {j.req && (
+                  {j.reqs?.length > 0 && (
                     <div className="mt-2.5 rounded-lg border border-amber-100 bg-amber-50/70 p-2.5">
-                      <div className="text-[11px] font-bold uppercase tracking-wide text-amber-700">요구 자격 · 모집분야</div>
-                      <div className="mt-1 text-[13px] leading-relaxed text-slate-700">{j.req}</div>
+                      <div className="text-[11px] font-bold uppercase tracking-wide text-amber-700">요구 자격 · 경력</div>
+                      <ul className="mt-1.5 space-y-1">
+                        {j.reqs.map((r, k) => (
+                          <li key={k} className="flex gap-1.5 text-[13px] leading-snug text-slate-700"><span className="mt-0.5 text-amber-500">•</span><span>{r}</span></li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </div>

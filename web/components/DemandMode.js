@@ -6,7 +6,9 @@ const SIDO = ["서울", "부산", "대구", "인천", "광주", "대전", "울�
 function EventCard({ e }) {
   return (
     <a href={e.url || undefined} target={e.url ? "_blank" : undefined} rel="noreferrer" className={`block overflow-hidden rounded-lg border border-slate-100 ${e.url ? "hover:border-teal-300" : ""}`}>
-      {e.thumb && <img src={e.thumb} alt="" loading="lazy" className="h-32 w-full bg-slate-100 object-cover" onError={(ev) => { ev.currentTarget.style.display = "none"; }} />}
+      {e.thumb
+        ? <img src={e.thumb} alt="" loading="lazy" className="h-32 w-full bg-slate-100 object-cover" onError={(ev) => { ev.currentTarget.style.display = "none"; }} />
+        : <div className="flex h-32 w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-[13px] font-bold text-slate-400">{e.field || "문화행사"}</div>}
       <div className="p-3">
         <div className="text-[13px] font-semibold text-slate-800">{e.name}</div>
         <div className="mt-0.5 text-[12px] text-slate-400">{e.sido || ""} {e.field ? `· ${e.field}` : ""} · {e.place || e.addr || ""}</div>

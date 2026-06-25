@@ -61,7 +61,9 @@ export default function SeekerExplore({ trend, events, jobs, onFindRegion }) {
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {evFiltered.slice(0, 30).map((e, i) => (
                 <a key={i} href={e.url || undefined} target={e.url ? "_blank" : undefined} rel="noreferrer" className={`block overflow-hidden rounded-lg border border-slate-100 ${e.url ? "hover:border-teal-300" : ""}`}>
-                  {e.thumb && <img src={e.thumb} alt="" loading="lazy" className="h-32 w-full bg-slate-100 object-cover" onError={(ev) => { ev.currentTarget.style.display = "none"; }} />}
+                  {e.thumb
+                    ? <img src={e.thumb} alt="" loading="lazy" className="h-32 w-full bg-slate-100 object-cover" onError={(ev) => { ev.currentTarget.outerHTML = '<div class=\"flex h-32 w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-[13px] font-bold text-slate-400\">' + (e.field || "문화행사") + "</div>"; }} />
+                    : <div className="flex h-32 w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-[13px] font-bold text-slate-400">{e.field || "문화행사"}</div>}
                   <div className="p-3">
                     <div className="text-[13px] font-semibold text-slate-800">{e.name}</div>
                     <div className="mt-0.5 text-[12px] text-slate-400">{e.sido || ""} {e.field ? `· ${e.field}` : ""} · {e.place || e.addr || ""}</div>
@@ -84,12 +86,21 @@ export default function SeekerExplore({ trend, events, jobs, onFindRegion }) {
             <p className="mb-2 text-[12px] text-slate-400">과거 공고 — 어떤 역량을 요구했는지 참고용</p>
             <Filter sido={jbSido} setSido={setJbSido} q={jbQ} setQ={setJbQ} options={jbOpts} ph="채용 제목·기관 검색" />
             <div className="mb-2 text-[12px] text-slate-400">{jbFiltered.length}건{jbSido ? ` · ${jbSido}` : ""}</div>
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {jbFiltered.slice(0, 10).map((j, i) => (
-                <div key={i} className="rounded-lg border border-slate-100 p-3">
-                  <div className="text-[13px] font-semibold text-slate-800">{j.title}</div>
-                  <div className="mt-0.5 text-[12px] text-slate-400">{j.org || "기관"} · {j.area || j.sido || "지역미상"}{j.clos ? ` · ~${j.clos}` : ""}</div>
-                  {j.req && <div className="mt-0.5 text-[12px] leading-snug text-slate-500">{j.req}</div>}
+                <div key={i} className="rounded-xl border border-slate-200 p-3.5">
+                  <div className="text-[14px] font-bold leading-snug text-slate-800">{j.title}</div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[12px] text-slate-500">
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-semibold">{j.sido || j.area || "지역미상"}</span>
+                    <span>{j.org || "기관"}</span>
+                    {j.clos && <span className="text-slate-400">· 마감 ~{j.clos}</span>}
+                  </div>
+                  {j.req && (
+                    <div className="mt-2.5 rounded-lg border border-amber-100 bg-amber-50/70 p-2.5">
+                      <div className="text-[11px] font-bold uppercase tracking-wide text-amber-700">요구 자격 · 모집분야</div>
+                      <div className="mt-1 text-[13px] leading-relaxed text-slate-700">{j.req}</div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

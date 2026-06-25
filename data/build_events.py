@@ -66,9 +66,9 @@ def xt(b, names):
         if m: return re.sub(r"<!\[CDATA\[|\]\]>", "", m.group(1)).strip()
     return ""
 def fmt(s): return f"{s[:4]}-{s[4:6]}-{s[6:8]}" if re.fullmatch(r"\d{8}", s) else s
-to = (datetime.date.today() + datetime.timedelta(days=120)).strftime("%Y%m%d")
+to = (datetime.date.today() + datetime.timedelta(days=180)).strftime("%Y%m%d")
 b_cnt = 0
-for pg in range(1, 6):
+for pg in range(1, 13):
     try:
         raw = get("https://apis.data.go.kr/B553457/cultureinfo/period2?" +
                   urllib.parse.urlencode({"serviceKey": KEY, "numOfRows": 500, "PageNo": pg,
